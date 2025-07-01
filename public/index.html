@@ -78,9 +78,9 @@
                         gallery.innerHTML = '<p>아직 등록된 이미지가 없습니다.</p>';
                         return;
                     }
-                    images.forEach(imageFile => {
+                    images.forEach(image => {
                         const img = document.createElement('img');
-                        img.src = `images/${imageFile}`;
+                        img.src = image.url;
                         img.alt = '황토방 갤러리 이미지';
                         gallery.appendChild(img);
                     });

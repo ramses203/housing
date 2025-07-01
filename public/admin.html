@@ -105,11 +105,11 @@
                 .then(res => res.json())
                 .then(images => {
                     if (images.length === 0) galleryList.innerHTML = '<p>등록된 이미지가 없습니다.</p>';
-                    images.forEach(file => {
+                    images.forEach(image => {
                         galleryList.innerHTML += `
-                            <div class="item-container" id="image-${file.replace(/\./g, '-')}">
-                                <img src="images/${file}" alt="${file}">
-                                <button class="delete-btn" data-type="image" data-filename="${file}">&times;</button>
+                            <div class="item-container" id="image-${image.public_id.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                <img src="${image.url}" alt="갤러리 이미지">
+                                <button class="delete-btn" data-type="image" data-public-id="${image.public_id}">&times;</button>
                             </div>`;
                     });
                 });
@@ -143,9 +143,9 @@
             
             const type = e.target.dataset.type;
             if (type === 'image') {
-                const filename = e.target.dataset.filename;
-                if (!confirm(`갤러리 이미지 '${filename}'을(를) 정말 삭제하시겠습니까?`)) return;
-                fetch(`/api/images/${filename}`, { method: 'DELETE' })
+                const publicId = e.target.dataset.publicId;
+                if (!confirm(`갤러리 이미지를 정말 삭제하시겠습니까?`)) return;
+                fetch(`/api/images/${encodeURIComponent(publicId)}`, { method: 'DELETE' })
                     .then(res => res.json())
                     .then(data => data.success ? loadGallery() : alert('삭제 실패: ' + data.error));
             } else if (type === 'product') {
