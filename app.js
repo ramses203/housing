@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const cloudinary = require('cloudinary').v2;
 
 const app = express();
@@ -15,7 +16,16 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-app.use(session({ secret: 'your-secret-key', resave: false, saveUninitialized: true }));
+app.use(session({
+    store: new FileStore({ path: '/tmp/sessions', logFn: function() {} }),
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+    }
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // JSON 요청 본문을 처리하기 위해 추가
 
