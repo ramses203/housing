@@ -35,6 +35,37 @@
         .item-info p { margin: 0; font-size: 0.9rem; color: #666; }
         .delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; font-weight: bold; line-height: 28px; text-align: center; transition: background-color 0.3s; }
         .delete-btn:hover { background: #e53935; }
+
+        /* Custom File Input */
+        .custom-file-upload-label {
+            border: 2px dashed #ddd;
+            display: inline-block;
+            padding: 1.5rem;
+            cursor: pointer;
+            background-color: #f9f9f9;
+            width: 100%;
+            text-align: center;
+            color: #666;
+            border-radius: 8px;
+            transition: all 0.3s;
+            box-sizing: border-box;
+        }
+        .custom-file-upload-label:hover {
+            background-color: #f1f1f1;
+            border-color: #8d6e63;
+        }
+        input[type="file"].visually-hidden {
+            display: none;
+        }
+        .file-name-display {
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            font-style: italic;
+            color: #555;
+            text-align: center;
+            display: block;
+            min-height: 1.2em; /* Prevent layout shift */
+        }
     </style>
 </head>
 <body>
@@ -53,8 +84,12 @@
             <!-- 갤러리 관리 탭 -->
             <div id="gallery-management" class="tab-content active">
                 <h2>갤러리 이미지 업로드</h2>
-                <input type="file" id="gallery-files-input" accept="image/*" multiple>
-                <button id="gallery-upload-btn" style="margin-top: 1rem;">선택한 이미지들 업로드</button>
+                <label for="gallery-files-input" class="custom-file-upload-label">
+                    클릭하여 여러 이미지 선택
+                </label>
+                <input type="file" id="gallery-files-input" class="visually-hidden" accept="image/*" multiple>
+                <div id="gallery-file-name" class="file-name-display"></div>
+                <button id="gallery-upload-btn">선택한 이미지들 업로드</button>
                 
                 <h2 style="margin-top: 3rem;">현재 갤러리</h2>
                 <div id="gallery-list" class="item-list"></div>
@@ -67,7 +102,12 @@
                     <div class="form-group"><label for="productName">상품명</label><input type="text" id="productName" name="productName" required></div>
                     <div class="form-group"><label for="productPrice">상품 가격</label><input type="number" id="productPrice" name="productPrice" placeholder="숫자만 입력하세요" required></div>
                     <div class="form-group"><label for="productDescription">상품 설명</label><textarea id="productDescription" name="productDescription" rows="3" required></textarea></div>
-                    <div class="form-group"><label for="productImage">상품 이미지</label><input type="file" id="productImage" name="productImage" accept="image/*" required></div>
+                    <div class="form-group">
+                        <label for="productImage">상품 이미지</label>
+                        <label for="productImage" class="custom-file-upload-label">클릭하여 이미지 선택</label>
+                        <input type="file" id="productImage" name="productImage" class="visually-hidden" accept="image/*" required>
+                        <div id="product-file-name" class="file-name-display"></div>
+                    </div>
                     <button type="submit">상품 추가하기</button>
                 </form>
 
@@ -230,6 +270,29 @@
         // --- Init ---
         loadGallery();
         loadProducts();
+
+        // --- File Input Display ---
+        const galleryInput = document.getElementById('gallery-files-input');
+        const galleryFileName = document.getElementById('gallery-file-name');
+        galleryInput.addEventListener('change', () => {
+            if (galleryInput.files.length > 1) {
+                galleryFileName.textContent = `${galleryInput.files.length}개의 파일이 선택되었습니다.`;
+            } else if (galleryInput.files.length === 1) {
+                galleryFileName.textContent = galleryInput.files[0].name;
+            } else {
+                galleryFileName.textContent = '';
+            }
+        });
+
+        const productInput = document.getElementById('productImage');
+        const productFileName = document.getElementById('product-file-name');
+        productInput.addEventListener('change', () => {
+            if (productInput.files.length > 0) {
+                productFileName.textContent = productInput.files[0].name;
+            } else {
+                productFileName.textContent = '';
+            }
+        });
     });
     </script>
 </body>
