@@ -186,11 +186,16 @@
             try {
                 for (const file of files) {
                     const cloudinaryRes = await uploadToCloudinary(file);
-                    await fetch('/api/images', {
+                    const res = await fetch('/api/images', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: cloudinaryRes.secure_url, public_id: cloudinaryRes.public_id })
                     });
+                    
+                    if (!res.ok) {
+                        console.error('Failed to save image to server.', await res.text());
+                        alert('이미지 정보를 서버에 저장하는데 실패했습니다.');
+                    }
                 }
             } catch (error) {
                 console.error('An error occurred during gallery upload process.');

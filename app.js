@@ -37,12 +37,23 @@ app.get('/api/images', (req, res) => {
 
 // 갤러리 이미지 정보 저장 API
 app.post('/api/images', authMiddleware, (req, res) => {
+    console.log('POST /api/images 요청 받음:', req.body); // 요청 본문 로깅
     const newImage = { url: req.body.url, public_id: req.body.public_id };
     const galleryFilePath = path.join(__dirname, 'data', 'gallery.json');
     fs.readFile(galleryFilePath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('갤러리 파일 읽기 오류:', err);
+        }
         const images = (err || !data) ? [] : JSON.parse(data);
         images.push(newImage);
-        fs.writeFile(galleryFilePath, JSON.stringify(images, null, 2), () => res.json({ success: true }));
+        fs.writeFile(galleryFilePath, JSON.stringify(images, null, 2), (writeErr) => {
+            if (writeErr) {
+                console.error('갤러리 파일 쓰기 오류:', writeErr);
+                return res.status(500).json({ success: false, error: 'Failed to save image data.' });
+            }
+            console.log('갤러리 파일에 성공적으로 저장됨.');
+            res.json({ success: true });
+        });
     });
 });
 
