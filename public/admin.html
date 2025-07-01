@@ -23,7 +23,7 @@
         .form-group { margin-bottom: 1rem; text-align: left; }
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
         .form-group input, .form-group textarea, .form-group button { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        form button { background-color: #8d6e63; color: white; font-size: 1rem; cursor: pointer; transition: background-color 0.3s; }
+        form button, #gallery-upload-btn { background-color: #8d6e63; color: white; font-size: 1rem; cursor: pointer; transition: background-color 0.3s; border: none; padding: 0.8rem; border-radius: 4px; width: 100%; }
         form button:hover { background-color: #6d4c41; }
         
         /* Item Lists (Gallery & Products) */
@@ -53,10 +53,8 @@
             <!-- 갤러리 관리 탭 -->
             <div id="gallery-management" class="tab-content active">
                 <h2>갤러리 이미지 업로드</h2>
-                <form id="gallery-upload-form" action="/upload" method="post" enctype="multipart/form-data">
-                    <input type="file" name="images" accept="image/*" required multiple>
-                    <button type="submit" style="margin-top: 1rem;">선택한 이미지들 업로드</button>
-                </form>
+                <input type="file" id="gallery-files-input" accept="image/*" multiple>
+                <button id="gallery-upload-btn" style="margin-top: 1rem;">선택한 이미지들 업로드</button>
                 
                 <h2 style="margin-top: 3rem;">현재 갤러리</h2>
                 <div id="gallery-list" class="item-list"></div>
@@ -65,7 +63,7 @@
             <!-- 상품 관리 탭 -->
             <div id="product-management" class="tab-content">
                 <h2>신규 상품 추가</h2>
-                <form id="product-add-form" action="/admin/product" method="post" enctype="multipart/form-data">
+                <form id="product-add-form">
                     <div class="form-group"><label for="productName">상품명</label><input type="text" id="productName" name="productName" required></div>
                     <div class="form-group"><label for="productPrice">상품 가격</label><input type="number" id="productPrice" name="productPrice" placeholder="숫자만 입력하세요" required></div>
                     <div class="form-group"><label for="productDescription">상품 설명</label><textarea id="productDescription" name="productDescription" rows="3" required></textarea></div>
@@ -85,6 +83,21 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const CLOUDINARY_CLOUD_NAME = 'YOUR_CLOUD_NAME'; // Vercel 환경 변수에 설정한 값으로 변경해야 합니다.
+        const CLOUDINARY_UPLOAD_PRESET = 'vwzny78k';
+
+        // --- Helper Functions ---
+        const uploadToCloudinary = async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            return res.json();
+        };
+
         // --- Tab AÇTIRMA ---
         const tabs = document.querySelectorAll('.tab-link');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -97,71 +110,103 @@
             });
         });
 
-        // --- 갤러리 관리 ---
+        // --- Gallery Management ---
         const galleryList = document.getElementById('gallery-list');
-        function loadGallery() {
+        const galleryUploadBtn = document.getElementById('gallery-upload-btn');
+        const galleryFilesInput = document.getElementById('gallery-files-input');
+
+        async function loadGallery() {
+            const res = await fetch('/api/images');
+            const images = await res.json();
             galleryList.innerHTML = '';
-            fetch('/api/images')
-                .then(res => res.json())
-                .then(images => {
-                    if (images.length === 0) galleryList.innerHTML = '<p>등록된 이미지가 없습니다.</p>';
-                    images.forEach(image => {
-                        galleryList.innerHTML += `
-                            <div class="item-container" id="image-${image.public_id.replace(/[^a-zA-Z0-9]/g, '-')}">
-                                <img src="${image.url}" alt="갤러리 이미지">
-                                <button class="delete-btn" data-type="image" data-public-id="${image.public_id}">&times;</button>
-                            </div>`;
-                    });
-                });
+            images.forEach(img => {
+                galleryList.innerHTML += `<div class="item-container"><img src="${img.url}"><button class="delete-btn" data-type="image" data-public-id="${img.public_id}">&times;</button></div>`;
+            });
         }
 
-        // --- 상품 관리 ---
-        const productList = document.getElementById('product-list');
-        function loadProducts() {
-            productList.innerHTML = '';
-            fetch('/api/products')
-                .then(res => res.json())
-                .then(products => {
-                    if (products.length === 0) productList.innerHTML = '<p>등록된 상품이 없습니다.</p>';
-                    products.forEach(p => {
-                        productList.innerHTML += `
-                            <div class="item-container" id="product-${p.id}">
-                                <img src="${p.image}" alt="${p.name}">
-                                <button class="delete-btn" data-type="product" data-id="${p.id}">&times;</button>
-                                <div class="item-info">
-                                    <h3>${p.name}</h3>
-                                    <p>${p.price.toLocaleString('ko-KR')}원</p>
-                                </div>
-                            </div>`;
-                    });
-                });
-        }
-        
-        // --- 삭제 이벤트 위임 ---
-        document.querySelector('.admin-container').addEventListener('click', function(e) {
-            if (!e.target.classList.contains('delete-btn')) return;
+        galleryUploadBtn.addEventListener('click', async () => {
+            const files = galleryFilesInput.files;
+            if (files.length === 0) return alert('업로드할 파일을 선택해주세요.');
             
+            galleryUploadBtn.textContent = '업로드 중...';
+            galleryUploadBtn.disabled = true;
+
+            for (const file of files) {
+                const cloudinaryRes = await uploadToCloudinary(file);
+                await fetch('/api/images', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: cloudinaryRes.secure_url, public_id: cloudinaryRes.public_id })
+                });
+            }
+            
+            galleryFilesInput.value = '';
+            galleryUploadBtn.textContent = '선택한 이미지들 업로드';
+            galleryUploadBtn.disabled = false;
+            loadGallery();
+        });
+
+        // --- Product Management ---
+        const productList = document.getElementById('product-list');
+        const productForm = document.getElementById('product-add-form');
+
+        async function loadProducts() {
+            const res = await fetch('/api/products');
+            const products = await res.json();
+            productList.innerHTML = '';
+            products.forEach(p => {
+                productList.innerHTML += `<div class="item-container"><img src="${p.image}"><div class="item-info"><h3>${p.name}</h3><p>${p.price.toLocaleString('ko-KR')}원</p></div><button class="delete-btn" data-type="product" data-id="${p.id}">&times;</button></div>`;
+            });
+        }
+
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const productImageFile = document.getElementById('productImage').files[0];
+            if (!productImageFile) return alert('상품 이미지를 선택해주세요.');
+
+            const submitBtn = productForm.querySelector('button');
+            submitBtn.textContent = '업로드 중...';
+            submitBtn.disabled = true;
+            
+            const cloudinaryRes = await uploadToCloudinary(productImageFile);
+            
+            const productData = {
+                productName: document.getElementById('productName').value,
+                productPrice: document.getElementById('productPrice').value,
+                productDescription: document.getElementById('productDescription').value,
+                productImage: cloudinaryRes.secure_url,
+                cloudinaryId: cloudinaryRes.public_id
+            };
+
+            await fetch('/admin/product', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productData)
+            });
+
+            productForm.reset();
+            submitBtn.textContent = '상품 추가하기';
+            submitBtn.disabled = false;
+            loadProducts();
+        });
+
+        // --- Delete Logic ---
+        document.querySelector('.admin-container').addEventListener('click', async (e) => {
+            if (!e.target.classList.contains('delete-btn')) return;
+
             const type = e.target.dataset.type;
             if (type === 'image') {
-                const publicId = e.target.dataset.publicId;
-                if (!confirm(`갤러리 이미지를 정말 삭제하시겠습니까?`)) return;
-                fetch(`/api/images/${encodeURIComponent(publicId)}`, { method: 'DELETE' })
-                    .then(res => res.json())
-                    .then(data => data.success ? loadGallery() : alert('삭제 실패: ' + data.error));
+                if (!confirm('갤러리 이미지를 정말 삭제하시겠습니까?')) return;
+                await fetch(`/api/images/${encodeURIComponent(e.target.dataset.publicId)}`, { method: 'DELETE' });
+                loadGallery();
             } else if (type === 'product') {
-                const id = e.target.dataset.id;
-                if (!confirm(`상품 (ID: ${id})을(를) 정말 삭제하시겠습니까?`)) return;
-                fetch(`/api/products/${id}`, { method: 'DELETE' })
-                    .then(res => res.json())
-                    .then(data => data.success ? loadProducts() : alert('삭제 실패: ' + data.error));
+                if (!confirm('상품을 정말 삭제하시겠습니까?')) return;
+                await fetch(`/api/products/${e.target.dataset.id}`, { method: 'DELETE' });
+                loadProducts();
             }
         });
 
-        // --- 폼 제출 후 새로고침 ---
-        document.getElementById('gallery-upload-form').addEventListener('submit', () => setTimeout(loadGallery, 1000));
-        document.getElementById('product-add-form').addEventListener('submit', () => setTimeout(loadProducts, 1000));
-
-        // --- 초기 로드 ---
+        // --- Init ---
         loadGallery();
         loadProducts();
     });
