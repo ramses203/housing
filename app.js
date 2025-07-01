@@ -24,6 +24,8 @@ app.use(session({
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24시간
     }
 }));
 app.use(express.urlencoded({ extended: true }));
@@ -31,6 +33,7 @@ app.use(express.json()); // JSON 요청 본문을 처리하기 위해 추가
 
 // --- 인증 미들웨어 ---
 const authMiddleware = (req, res, next) => {
+    console.log('인증 체크:', req.session.isAuthenticated);
     if (req.session.isAuthenticated) return next();
     res.redirect('/login');
 };
@@ -135,10 +138,23 @@ app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'log
 app.get('/admin.html', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/admin', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.post('/login', (req, res) => {
+    console.log('로그인 시도:', req.body);
+    console.log('입력된 비밀번호:', req.body.password);
+    console.log('설정된 비밀번호:', ADMIN_PASSWORD);
+    
     if (req.body.password === ADMIN_PASSWORD) {
+        console.log('비밀번호 일치 - 세션 설정');
         req.session.isAuthenticated = true;
-        res.redirect('/admin');
+        req.session.save((err) => {
+            if (err) {
+                console.error('세션 저장 오류:', err);
+            } else {
+                console.log('세션 저장 성공');
+            }
+            res.redirect('/admin');
+        });
     } else {
+        console.log('비밀번호 불일치');
         res.redirect('/login');
     }
 });
