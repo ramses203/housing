@@ -1,0 +1,17 @@
+# Dependencies
+/node_modules
+
+# Vercel
+.vercel
+
+# Data files - We might change this later
+# /data/products.json
+
+# Environment variables
+.env
+
+# OS generated files
+.DS_Store
+*.swo
+*~
+.vscode/ 

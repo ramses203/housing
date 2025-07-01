@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 로그인</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 5rem auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .login-container input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .login-container button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background-color: #8d6e63;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="/" style="color:white; text-decoration:none;">청정 황토방</a></h1>
+    </header>
+    <main>
+        <div class="login-container">
+            <h2>관리자 로그인</h2>
+            <form action="/login" method="post">
+                <input type="password" name="password" placeholder="비밀번호" required>
+                <button type="submit">로그인</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html> 

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>청정 황토방</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>청정 황토방</h1>
+        <nav>
+            <ul>
+                <li><a href="#about">소개</a></li>
+                <li><a href="#gallery">갤러리</a></li>
+                <li><a href="#contact">오시는 길</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="hero-text">
+                <h2>자연과 함께하는 건강한 쉼</h2>
+                <p>청정 황토방에서 특별한 휴식을 경험하세요.</p>
+            </div>
+        </section>
+
+        <section id="about">
+            <h2>황토방 소개</h2>
+            <p>저희 황토방은 전통적인 방식으로 지어졌으며, 자연 친화적인 재료만을 사용하여 몸과 마음의 진정한 휴식을 선사합니다.</p>
+        </section>
+
+        <section id="gallery">
+            <h2>갤러리</h2>
+            <div class="gallery-images">
+                <!-- 이미지가 여기에 동적으로 추가됩니다 -->
+            </div>
+        </section>
+
+        <section id="products">
+            <h2>상품 진열대</h2>
+            <div class="product-list">
+                <!-- 상품 목록이 여기에 동적으로 추가됩니다 -->
+            </div>
+        </section>
+
+        <section id="contact">
+            <h2>오시는 길</h2>
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h3>청정 황토방</h3>
+                    <p><strong>주소:</strong> 강원도 자연군 건강로 123</p>
+                    <p><strong>연락처:</strong> 010-1234-5678</p>
+                    <p>자연 속에서 진정한 쉼을 원하신다면 언제든 방문해주세요.</p>
+                </div>
+                <div class="map">
+                    <!-- 지도 API 연동 시 아래 div에 지도가 표시됩니다 -->
+                    <p>[지도 위치]</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2025 청정 황토방. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Gallery Loader
+        document.addEventListener('DOMContentLoaded', function() {
+            const gallery = document.querySelector('.gallery-images');
+            fetch('/api/images')
+                .then(response => response.json())
+                .then(images => {
+                    if (images.length === 0) {
+                        gallery.innerHTML = '<p>아직 등록된 이미지가 없습니다.</p>';
+                        return;
+                    }
+                    images.forEach(imageFile => {
+                        const img = document.createElement('img');
+                        img.src = `images/${imageFile}`;
+                        img.alt = '황토방 갤러리 이미지';
+                        gallery.appendChild(img);
+                    });
+                })
+                .catch(error => console.error('갤러리 이미지 로딩 오류:', error));
+        });
+
+        // Product Loader
+        document.addEventListener('DOMContentLoaded', function() {
+            const productList = document.querySelector('.product-list');
+            fetch('/api/products')
+                .then(response => response.json())
+                .then(products => {
+                    if (products.length === 0) {
+                        productList.innerHTML = '<p>판매 중인 상품이 아직 없습니다.</p>';
+                        return;
+                    }
+                    products.forEach(product => {
+                        const productCard = document.createElement('div');
+                        productCard.className = 'product-card';
+                        productCard.innerHTML = `
+                            <img src="${product.image}" alt="${product.name}">
+                            <div class="product-info">
+                                <h3>${product.name}</h3>
+                                <p class="product-price">${product.price.toLocaleString('ko-KR')}원</p>
+                                <p>${product.description}</p>
+                            </div>
+                        `;
+                        productList.appendChild(productCard);
+                    });
+                })
+                .catch(error => console.error('상품 목록 로딩 오류:', error));
+        });
+    </script>
+</body>
+</html> 

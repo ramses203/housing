@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* General Admin Styles */
+        main { padding: 2rem; }
+        .admin-container { max-width: 960px; margin: auto; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 2rem; }
+        .tab-link { padding: 1rem 1.5rem; cursor: pointer; border: none; background-color: transparent; font-size: 1.1rem; border-bottom: 3px solid transparent; }
+        .tab-link.active { border-bottom-color: #8d6e63; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 1rem; text-align: left; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        .form-group input, .form-group textarea, .form-group button { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        form button { background-color: #8d6e63; color: white; font-size: 1rem; cursor: pointer; transition: background-color 0.3s; }
+        form button:hover { background-color: #6d4c41; }
+        
+        /* Item Lists (Gallery & Products) */
+        .item-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; }
+        .item-container { position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .item-container img { width: 100%; height: 150px; object-fit: cover; display: block; }
+        .item-info { padding: 1rem; background-color: #f9f9f9; text-align: left;}
+        .item-info h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+        .item-info p { margin: 0; font-size: 0.9rem; color: #666; }
+        .delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; font-weight: bold; line-height: 28px; text-align: center; transition: background-color 0.3s; }
+        .delete-btn:hover { background: #e53935; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="/" style="color:white; text-decoration:none;">청정 황토방 - 관리자</a></h1>
+        <nav><a href="/logout" style="color:white; text-decoration: none;">로그아웃</a></nav>
+    </header>
+
+    <main>
+        <div class="admin-container">
+            <div class="tabs">
+                <button class="tab-link active" data-tab="gallery-management">갤러리 관리</button>
+                <button class="tab-link" data-tab="product-management">상품 관리</button>
+            </div>
+
+            <!-- 갤러리 관리 탭 -->
+            <div id="gallery-management" class="tab-content active">
+                <h2>갤러리 이미지 업로드</h2>
+                <form id="gallery-upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                    <input type="file" name="images" accept="image/*" required multiple>
+                    <button type="submit" style="margin-top: 1rem;">선택한 이미지들 업로드</button>
+                </form>
+                
+                <h2 style="margin-top: 3rem;">현재 갤러리</h2>
+                <div id="gallery-list" class="item-list"></div>
+            </div>
+
+            <!-- 상품 관리 탭 -->
+            <div id="product-management" class="tab-content">
+                <h2>신규 상품 추가</h2>
+                <form id="product-add-form" action="/admin/product" method="post" enctype="multipart/form-data">
+                    <div class="form-group"><label for="productName">상품명</label><input type="text" id="productName" name="productName" required></div>
+                    <div class="form-group"><label for="productPrice">상품 가격</label><input type="number" id="productPrice" name="productPrice" placeholder="숫자만 입력하세요" required></div>
+                    <div class="form-group"><label for="productDescription">상품 설명</label><textarea id="productDescription" name="productDescription" rows="3" required></textarea></div>
+                    <div class="form-group"><label for="productImage">상품 이미지</label><input type="file" id="productImage" name="productImage" accept="image/*" required></div>
+                    <button type="submit">상품 추가하기</button>
+                </form>
+
+                <h2 style="margin-top: 3rem;">현재 상품 목록</h2>
+                <div id="product-list" class="item-list"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 청정 황토방. All rights reserved.</p>
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Tab AÇTIRMA ---
+        const tabs = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(item => item.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // --- 갤러리 관리 ---
+        const galleryList = document.getElementById('gallery-list');
+        function loadGallery() {
+            galleryList.innerHTML = '';
+            fetch('/api/images')
+                .then(res => res.json())
+                .then(images => {
+                    if (images.length === 0) galleryList.innerHTML = '<p>등록된 이미지가 없습니다.</p>';
+                    images.forEach(file => {
+                        galleryList.innerHTML += `
+                            <div class="item-container" id="image-${file.replace(/\./g, '-')}">
+                                <img src="images/${file}" alt="${file}">
+                                <button class="delete-btn" data-type="image" data-filename="${file}">&times;</button>
+                            </div>`;
+                    });
+                });
+        }
+
+        // --- 상품 관리 ---
+        const productList = document.getElementById('product-list');
+        function loadProducts() {
+            productList.innerHTML = '';
+            fetch('/api/products')
+                .then(res => res.json())
+                .then(products => {
+                    if (products.length === 0) productList.innerHTML = '<p>등록된 상품이 없습니다.</p>';
+                    products.forEach(p => {
+                        productList.innerHTML += `
+                            <div class="item-container" id="product-${p.id}">
+                                <img src="${p.image}" alt="${p.name}">
+                                <button class="delete-btn" data-type="product" data-id="${p.id}">&times;</button>
+                                <div class="item-info">
+                                    <h3>${p.name}</h3>
+                                    <p>${p.price.toLocaleString('ko-KR')}원</p>
+                                </div>
+                            </div>`;
+                    });
+                });
+        }
+        
+        // --- 삭제 이벤트 위임 ---
+        document.querySelector('.admin-container').addEventListener('click', function(e) {
+            if (!e.target.classList.contains('delete-btn')) return;
+            
+            const type = e.target.dataset.type;
+            if (type === 'image') {
+                const filename = e.target.dataset.filename;
+                if (!confirm(`갤러리 이미지 '${filename}'을(를) 정말 삭제하시겠습니까?`)) return;
+                fetch(`/api/images/${filename}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => data.success ? loadGallery() : alert('삭제 실패: ' + data.error));
+            } else if (type === 'product') {
+                const id = e.target.dataset.id;
+                if (!confirm(`상품 (ID: ${id})을(를) 정말 삭제하시겠습니까?`)) return;
+                fetch(`/api/products/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => data.success ? loadProducts() : alert('삭제 실패: ' + data.error));
+            }
+        });
+
+        // --- 폼 제출 후 새로고침 ---
+        document.getElementById('gallery-upload-form').addEventListener('submit', () => setTimeout(loadGallery, 1000));
+        document.getElementById('product-add-form').addEventListener('submit', () => setTimeout(loadProducts, 1000));
+
+        // --- 초기 로드 ---
+        loadGallery();
+        loadProducts();
+    });
+    </script>
+</body>
+</html> 
