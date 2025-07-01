@@ -91,11 +91,23 @@
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            return res.json();
+            
+            try {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    console.error('Cloudinary upload failed:', data);
+                    throw new Error(data.error.message);
+                }
+                return data;
+            } catch (error) {
+                console.error('Error uploading to Cloudinary:', error);
+                alert('이미지 업로드에 실패했습니다. 자세한 내용은 콘솔을 확인해주세요.');
+                throw error; // 에러를 다시 던져서 후속 처리를 중단
+            }
         };
 
         // --- Tab AÇTIRMA ---
@@ -131,19 +143,23 @@
             galleryUploadBtn.textContent = '업로드 중...';
             galleryUploadBtn.disabled = true;
 
-            for (const file of files) {
-                const cloudinaryRes = await uploadToCloudinary(file);
-                await fetch('/api/images', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: cloudinaryRes.secure_url, public_id: cloudinaryRes.public_id })
-                });
+            try {
+                for (const file of files) {
+                    const cloudinaryRes = await uploadToCloudinary(file);
+                    await fetch('/api/images', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: cloudinaryRes.secure_url, public_id: cloudinaryRes.public_id })
+                    });
+                }
+            } catch (error) {
+                console.error('An error occurred during gallery upload process.');
+            } finally {
+                galleryFilesInput.value = '';
+                galleryUploadBtn.textContent = '선택한 이미지들 업로드';
+                galleryUploadBtn.disabled = false;
+                loadGallery();
             }
-            
-            galleryFilesInput.value = '';
-            galleryUploadBtn.textContent = '선택한 이미지들 업로드';
-            galleryUploadBtn.disabled = false;
-            loadGallery();
         });
 
         // --- Product Management ---
@@ -168,26 +184,31 @@
             submitBtn.textContent = '업로드 중...';
             submitBtn.disabled = true;
             
-            const cloudinaryRes = await uploadToCloudinary(productImageFile);
-            
-            const productData = {
-                productName: document.getElementById('productName').value,
-                productPrice: document.getElementById('productPrice').value,
-                productDescription: document.getElementById('productDescription').value,
-                productImage: cloudinaryRes.secure_url,
-                cloudinaryId: cloudinaryRes.public_id
-            };
-
-            await fetch('/admin/product', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(productData)
-            });
-
-            productForm.reset();
-            submitBtn.textContent = '상품 추가하기';
-            submitBtn.disabled = false;
-            loadProducts();
+            try {
+                const cloudinaryRes = await uploadToCloudinary(productImageFile);
+                
+                const productData = {
+                    productName: document.getElementById('productName').value,
+                    productPrice: document.getElementById('productPrice').value,
+                    productDescription: document.getElementById('productDescription').value,
+                    productImage: cloudinaryRes.secure_url,
+                    cloudinaryId: cloudinaryRes.public_id
+                };
+    
+                await fetch('/admin/product', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
+    
+                productForm.reset();
+                loadProducts();
+            } catch (error) {
+                console.error('An error occurred during product creation.');
+            } finally {
+                submitBtn.textContent = '상품 추가하기';
+                submitBtn.disabled = false;
+            }
         });
 
         // --- Delete Logic ---
