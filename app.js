@@ -18,7 +18,6 @@ cloudinary.config({
 app.use(session({ secret: 'your-secret-key', resave: false, saveUninitialized: true }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // JSON 요청 본문을 처리하기 위해 추가
-app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 인증 미들웨어 ---
 const authMiddleware = (req, res, next) => {
@@ -125,6 +124,9 @@ app.post('/login', (req, res) => {
 app.get('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/'));
 });
+
+// public 폴더의 정적 파일을 라우트 핸들러 뒤에서 제공합니다.
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(port, () => {
     console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
