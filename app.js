@@ -5,7 +5,7 @@ const fs = require('fs');
 const session = require('express-session');
 
 const app = express();
-const port = 7000;
+const port = process.env.PORT || 7000;
 const ADMIN_PASSWORD = 'admin'; // 실제 운영 시에는 환경 변수 등으로 관리해야 합니다.
 
 // 세션 설정
@@ -42,7 +42,8 @@ const productStorage = multer.diskStorage({
 });
 const uploadProduct = multer({ storage: productStorage });
 
-app.use(express.static('public'));
+// 정적 파일 제공 (CSS, JS, 이미지 등)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 로그인 확인 미들웨어
 const authMiddleware = (req, res, next) => {
