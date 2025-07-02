@@ -47,6 +47,16 @@ if (!parsedOk) {
 cloudinary.config(cloudinaryOptions);
 console.log('Cloudinary 최종 설정:', cloudinaryOptions);
 
+// --- TEMP DEBUG ENDPOINT (배포 후 확인용, 문제 해결 후 삭제하세요) ---
+app.get('/__env', (req, res) => {
+    const cfg = cloudinary.config();
+    res.json({
+        cloud_name: cfg.cloud_name,
+        api_key: cfg.api_key ? cfg.api_key.slice(0, 4) + '***' : undefined,
+        api_secret: cfg.api_secret ? '***' : undefined
+    });
+});
+
 app.set('trust proxy', 1);
 app.use(
   cookieSession({
