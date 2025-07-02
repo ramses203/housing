@@ -65,12 +65,31 @@
             margin-bottom: 1rem;
             min-height: 50px;
         }
+        .preview-image-container {
+            position: relative;
+        }
         .preview-image {
             width: 80px;
             height: 80px;
             object-fit: cover;
             border-radius: 8px;
             border: 1px solid #ddd;
+        }
+        .preview-delete-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 20px;
+            text-align: center;
         }
     </style>
 </head>
@@ -172,6 +191,8 @@
         const galleryList = document.getElementById('gallery-list');
         const galleryUploadBtn = document.getElementById('gallery-upload-btn');
         const galleryFilesInput = document.getElementById('gallery-files-input');
+        const galleryPreview = document.getElementById('gallery-preview');
+        let galleryFiles = [];
 
         async function loadGallery() {
             const res = await fetch('/api/images');
@@ -183,14 +204,13 @@
         }
 
         galleryUploadBtn.addEventListener('click', async () => {
-            const files = galleryFilesInput.files;
-            if (files.length === 0) return alert('업로드할 파일을 선택해주세요.');
+            if (galleryFiles.length === 0) return alert('업로드할 파일을 선택해주세요.');
             
             galleryUploadBtn.textContent = '업로드 중...';
             galleryUploadBtn.disabled = true;
 
             try {
-                for (const file of files) {
+                for (const file of galleryFiles) {
                     const cloudinaryRes = await uploadToCloudinary(file);
                     const res = await fetch('/api/images', {
                         method: 'POST',
@@ -207,6 +227,8 @@
                 console.error('An error occurred during gallery upload process.');
             } finally {
                 galleryFilesInput.value = '';
+                galleryFiles = [];
+                galleryPreview.innerHTML = '';
                 galleryUploadBtn.textContent = '선택한 이미지들 업로드';
                 galleryUploadBtn.disabled = false;
                 loadGallery();
@@ -275,6 +297,10 @@
                 if (!confirm('상품을 정말 삭제하시겠습니까?')) return;
                 await fetch(`/api/products/${e.target.dataset.id}`, { method: 'DELETE' });
                 loadProducts();
+            } else if (e.target.classList.contains('preview-delete-btn')) {
+                const fileIdToRemove = e.target.dataset.fileId;
+                galleryFiles = galleryFiles.filter(f => f.id != fileIdToRemove);
+                e.target.parentElement.remove();
             }
         });
 
@@ -284,17 +310,33 @@
 
         // --- File Input Display ---
         const galleryInput = document.getElementById('gallery-files-input');
-        const galleryPreview = document.getElementById('gallery-preview');
         galleryInput.addEventListener('change', () => {
             galleryPreview.innerHTML = '';
+            galleryFiles = [];
+            
             if (galleryInput.files.length > 0) {
-                Array.from(galleryInput.files).forEach(file => {
+                Array.from(galleryInput.files).forEach((file, index) => {
+                    const fileId = `${Date.now()}-${index}`;
+                    file.id = fileId;
+                    galleryFiles.push(file);
+
                     const reader = new FileReader();
                     reader.onload = function(e) {
+                        const container = document.createElement('div');
+                        container.className = 'preview-image-container';
+                        
                         const img = document.createElement('img');
                         img.src = e.target.result;
                         img.className = 'preview-image';
-                        galleryPreview.appendChild(img);
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'preview-delete-btn';
+                        deleteBtn.textContent = 'X';
+                        deleteBtn.dataset.fileId = fileId;
+                        
+                        container.appendChild(img);
+                        container.appendChild(deleteBtn);
+                        galleryPreview.appendChild(container);
                     }
                     reader.readAsDataURL(file);
                 });
