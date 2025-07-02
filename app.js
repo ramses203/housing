@@ -12,11 +12,20 @@ const GALLERY_FILE_PATH = isProd ? '/tmp/gallery.json' : path.join(__dirname, 'd
 const PRODUCTS_FILE_PATH = isProd ? '/tmp/products.json' : path.join(__dirname, 'data', 'products.json');
 
 // Cloudinary 설정
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
+if (process.env.CLOUDINARY_URL) {
+    // Vercel 등에서 CLOUDINARY_URL이 한 번에 제공되는 경우
+    cloudinary.config({
+        secure: true
+    });
+} else {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+}
+
+console.log('Cloudinary cloud_name:', cloudinary.config().cloud_name);
 
 app.set('trust proxy', 1);
 app.use(
