@@ -62,7 +62,7 @@ app.get('/api/images', (req, res) => {
     });
 });
 
-// 갤러리 이미지 정보 저장 API
+// 갤러리 이미지 정보 저장 API ㄴ
 app.post('/api/images', authMiddleware, (req, res) => {
     console.log('POST /api/images 요청 받음:', req.body); // 요청 본문 로깅
     const newImage = { url: req.body.url, public_id: req.body.public_id };
