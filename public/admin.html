@@ -286,6 +286,13 @@
 
         // --- Delete Logic ---
         document.querySelector('.admin-container').addEventListener('click', async (e) => {
+            if (e.target.classList.contains('preview-delete-btn')) {
+                const fileIdToRemove = e.target.dataset.fileId;
+                galleryFiles = galleryFiles.filter(f => f.id != fileIdToRemove);
+                e.target.parentElement.remove();
+                return; 
+            }
+
             if (!e.target.classList.contains('delete-btn')) return;
 
             const type = e.target.dataset.type;
@@ -297,10 +304,6 @@
                 if (!confirm('상품을 정말 삭제하시겠습니까?')) return;
                 await fetch(`/api/products/${e.target.dataset.id}`, { method: 'DELETE' });
                 loadProducts();
-            } else if (e.target.classList.contains('preview-delete-btn')) {
-                const fileIdToRemove = e.target.dataset.fileId;
-                galleryFiles = galleryFiles.filter(f => f.id != fileIdToRemove);
-                e.target.parentElement.remove();
             }
         });
 
