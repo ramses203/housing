@@ -3,97 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>청정 황토방</title>
+    <title>청정 황토방 - 자연 속 힐링 스테이</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.8/dist/web/static/pretendard.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
-        <h1>청정 황토방</h1>
-        <nav>
-            <ul>
-                <li><a href="#about">소개</a></li>
-                <li><a href="#gallery">갤러리</a></li>
-                <li><a href="#contact">오시는 길</a></li>
-            </ul>
-        </nav>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">청정 황토방</a>
+            <nav class="nav">
+                <ul>
+                    <li><a href="#about">소개</a></li>
+                    <li><a href="#features">특별함</a></li>
+                    <li><a href="#gallery">갤러리</a></li>
+                    <li><a href="#contact">예약 안내</a></li>
+                </ul>
+            </nav>
+            <a href="#contact" class="btn btn-primary">예약 문의</a>
+        </div>
     </header>
 
     <main>
         <section id="hero">
-            <div class="hero-text">
-                <h2>자연과 함께하는 건강한 쉼</h2>
-                <p>청정 황토방에서 특별한 휴식을 경험하세요.</p>
+            <div class="hero-content">
+                <h1 class="hero-title">몸과 마음이 쉬어가는 곳, 청정 황토방</h1>
+                <p class="hero-subtitle">자연의 숨결이 깃든 황토집에서 온전한 휴식을 경험하세요.</p>
+                <a href="#about" class="btn btn-secondary">더 알아보기</a>
             </div>
         </section>
 
-        <section id="about">
-            <h2>황토방 소개</h2>
-            <p>저희 황토방은 전통적인 방식으로 지어졌으며, 자연 친화적인 재료만을 사용하여 몸과 마음의 진정한 휴식을 선사합니다.</p>
-        </section>
-
-        <section id="gallery">
-            <h2>갤러리</h2>
-            <div class="gallery-images">
-                <!-- 이미지가 여기에 동적으로 추가됩니다 -->
-            </div>
-        </section>
-
-        <section id="products">
-            <h2>상품 진열대</h2>
-            <div class="product-list">
-                <!-- 상품 목록이 여기에 동적으로 추가됩니다 -->
-            </div>
-        </section>
-
-        <section id="contact">
-            <h2>오시는 길</h2>
-            <div class="contact-container">
-                <div class="contact-info">
-                    <h3>청정 황토방</h3>
-                    <p><strong>주소:</strong> 강원도 자연군 건강로 123</p>
-                    <p><strong>연락처:</strong> 010-1234-5678</p>
-                    <p>자연 속에서 진정한 쉼을 원하신다면 언제든 방문해주세요.</p>
-                </div>
-                <div class="map">
-                    <!-- 지도 API 연동 시 아래 div에 지도가 표시됩니다 -->
-                    <p>[지도 위치]</p>
+        <section id="about" class="section">
+            <div class="container text-center">
+                <h2 class="section-title">자연을 품은 건강한 쉼터</h2>
+                <p class="section-description">
+                    청정 황토방은 전통 건축 방식과 현대적인 편의시설이 조화를 이루는 공간입니다.<br>
+                    느리게 흘러가는 시간 속에서 지친 몸과 마음에 활력을 되찾아보세요.
+                </p>
+                <div class="about-grid">
+                    <div class="about-item">
+                        <img src="images/icon-nature.svg" alt="자연 아이콘" class="about-icon">
+                        <h3>100% 친환경 황토</h3>
+                        <p>화학 첨가물 없이 오직 자연의 재료로만 지어 건강한 기운을 선사합니다.</p>
+                    </div>
+                    <div class="about-item">
+                        <img src="images/icon-fire.svg" alt="아궁이 아이콘" class="about-icon">
+                        <h3>전통 구들 난방</h3>
+                        <p>장작을 때는 아궁이의 온기가 구들장을 통해 은은하게 퍼져 몸 속 깊이 따뜻함을 전합니다.</p>
+                    </div>
+                    <div class="about-item">
+                        <img src="images/icon-view.svg" alt="풍경 아이콘" class="about-icon">
+                        <h3>아름다운 자연경관</h3>
+                        <p>사계절 내내 변화하는 아름다운 자연 속에서 평온한 시간을 보낼 수 있습니다.</p>
+                    </div>
                 </div>
             </div>
         </section>
+        
+        <section id="features" class="section bg-light">
+            <div class="container">
+                <div class="feature-content">
+                    <div class="feature-text">
+                        <h2 class="section-title">청정 황토방만의 특별함</h2>
+                        <p>일상의 소음에서 벗어나 자연의 소리에 귀 기울여보세요. 쏟아지는 밤하늘의 별과 함께 잊지 못할 추억을 만들어드립니다.</p>
+                        <ul>
+                            <li>✔️ 웰빙 조식 제공 (사전 예약 시)</li>
+                            <li>✔️ 텃밭 채소 체험 (계절 한정)</li>
+                            <li>✔️ 불멍과 바비큐 시설 완비</li>
+                            <li>✔️ 주변 트래킹 코스 안내</li>
+                        </ul>
+                        <a href="#contact" class="btn btn-primary">자세히 보기</a>
+                    </div>
+                    <div class="feature-image">
+                        <img src="images/feature-image.jpg" alt="황토방의 특별한 풍경">
+                    </div>
+                </div>
+            </div>
+        </section>
 
+        <section id="gallery" class="section">
+            <div class="container text-center">
+                <h2 class="section-title">갤러리</h2>
+                <p class="section-description">청정 황토방의 아름다운 풍경을 미리 만나보세요.</p>
+                <div class="gallery-grid">
+                    <!-- 이미지가 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </section>
+
+        <section id="products" class="section bg-light">
+            <div class="container text-center">
+                <h2 class="section-title">웰빙 상품</h2>
+                <p class="section-description">집에서도 청정 황토방의 건강함을 느껴보세요.</p>
+                <div class="product-list">
+                    <!-- 상품 목록이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </section>
+        
+        <section id="contact" class="section">
+            <div class="container">
+                <h2 class="section-title text-center">예약 안내</h2>
+                <div class="contact-grid">
+                    <div class="contact-info">
+                        <h3>문의 및 예약</h3>
+                        <p>아래 연락처로 문의하시면 친절하게 안내해 드립니다. <br>방문 전 예약은 필수입니다.</p>
+                        <ul>
+                            <li><strong>전화:</strong> <a href="tel:010-1234-5678">010-1234-5678</a></li>
+                            <li><strong>주소:</strong> 강원도 자연군 건강로 123</li>
+                        </ul>
+                        <div class="map-placeholder">
+                            <p>지도</p>
+                        </div>
+                    </div>
+                    <div class="contact-form-container">
+                        <h3>간편 문의</h3>
+                        <form id="contact-form">
+                            <input type="text" name="name" placeholder="성함" required>
+                            <input type="email" name="email" placeholder="이메일 주소" required>
+                            <textarea name="message" placeholder="문의 내용을 입력하세요." required></textarea>
+                            <button type="submit" class="btn btn-primary">문의하기</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <footer>
-        <p>&copy; 2025 청정 황토방. All rights reserved. | <a href="/admin.html" style="color: #ccc; text-decoration: none;">관리자</a></p>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 청정 황토방. All Rights Reserved. | <a href="/admin.html">관리자 페이지</a></p>
+        </div>
     </footer>
 
+    <div id="modal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modal-image">
+    </div>
+
+    <script src="https://unpkg.com/scrollreveal"></script>
     <script>
-        // Gallery Loader
-        document.addEventListener('DOMContentLoaded', function() {
-            const gallery = document.querySelector('.gallery-images');
+        // 갤러리 로더
+        document.addEventListener('DOMContentLoaded', () => {
+            const galleryGrid = document.querySelector('.gallery-grid');
+            const modal = document.getElementById('modal');
+            const modalImage = document.getElementById('modal-image');
+            const closeModal = document.querySelector('.modal .close');
+
             fetch('/api/images')
                 .then(response => response.json())
                 .then(images => {
+                    if (!galleryGrid) return;
                     if (images.length === 0) {
-                        gallery.innerHTML = '<p>아직 등록된 이미지가 없습니다.</p>';
+                        galleryGrid.innerHTML = '<p>아직 등록된 이미지가 없습니다.</p>';
                         return;
                     }
                     images.forEach(image => {
                         const img = document.createElement('img');
                         img.src = image.url;
                         img.alt = '황토방 갤러리 이미지';
-                        gallery.appendChild(img);
+                        img.addEventListener('click', () => {
+                            modal.style.display = 'block';
+                            modalImage.src = image.url;
+                        });
+                        galleryGrid.appendChild(img);
                     });
                 })
                 .catch(error => console.error('갤러리 이미지 로딩 오류:', error));
+
+            if(closeModal) {
+                closeModal.onclick = () => modal.style.display = 'none';
+            }
+            if(modal) {
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                };
+            }
         });
 
-        // Product Loader
-        document.addEventListener('DOMContentLoaded', function() {
+        // 상품 로더
+        document.addEventListener('DOMContentLoaded', () => {
             const productList = document.querySelector('.product-list');
             fetch('/api/products')
                 .then(response => response.json())
                 .then(products => {
+                    if (!productList) return;
                     if (products.length === 0) {
                         productList.innerHTML = '<p>판매 중인 상품이 아직 없습니다.</p>';
                         return;
@@ -102,17 +197,26 @@
                         const productCard = document.createElement('div');
                         productCard.className = 'product-card';
                         productCard.innerHTML = `
-                            <img src="${product.image}" alt="${product.name}">
+                            <img src="${product.image}" alt="${product.name}" class="product-image">
                             <div class="product-info">
-                                <h3>${product.name}</h3>
+                                <h3 class="product-title">${product.name}</h3>
+                                <p class="product-description">${product.description}</p>
                                 <p class="product-price">${product.price.toLocaleString('ko-KR')}원</p>
-                                <p>${product.description}</p>
                             </div>
                         `;
                         productList.appendChild(productCard);
                     });
                 })
                 .catch(error => console.error('상품 목록 로딩 오류:', error));
+        });
+
+        // 스크롤 애니메이션
+        document.addEventListener('DOMContentLoaded', () => {
+            ScrollReveal().reveal('.section-title, .section-description', { delay: 200, origin: 'bottom', distance: '30px', interval: 100 });
+            ScrollReveal().reveal('.about-item, .feature-image', { delay: 400, origin: 'left', distance: '50px', interval: 200 });
+            ScrollReveal().reveal('.feature-text', { delay: 400, origin: 'right', distance: '50px' });
+            ScrollReveal().reveal('.gallery-grid img, .product-card', { delay: 200, origin: 'bottom', distance: '30px', interval: 100 });
+            ScrollReveal().reveal('.contact-info, .contact-form-container', { delay: 300, origin: 'bottom', distance: '40px', interval: 200 });
         });
     </script>
 </body>

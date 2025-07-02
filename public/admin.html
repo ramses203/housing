@@ -131,7 +131,7 @@
                         <label for="productImage">상품 이미지</label>
                         <label for="productImage" class="custom-file-upload-label">클릭하여 이미지 선택</label>
                         <input type="file" id="productImage" name="productImage" class="visually-hidden" accept="image/*" required>
-                        <div id="product-file-name" class="file-name-display"></div>
+                        <div id="product-preview" class="file-name-display"></div>
                     </div>
                     <button type="submit">상품 추가하기</button>
                 </form>
@@ -287,10 +287,16 @@
         // --- Delete Logic ---
         document.querySelector('.admin-container').addEventListener('click', async (e) => {
             if (e.target.classList.contains('preview-delete-btn')) {
-                const fileIdToRemove = e.target.dataset.fileId;
-                galleryFiles = galleryFiles.filter(f => f.id != fileIdToRemove);
-                e.target.parentElement.remove();
-                return; 
+                const previewContainer = e.target.closest('.file-name-display');
+                if (previewContainer.id === 'gallery-preview') {
+                    const fileIdToRemove = e.target.dataset.fileId;
+                    galleryFiles = galleryFiles.filter(f => f.id != fileIdToRemove);
+                    e.target.parentElement.remove();
+                } else if (previewContainer.id === 'product-preview') {
+                    document.getElementById('productImage').value = '';
+                    previewContainer.innerHTML = '';
+                }
+                return;
             }
 
             if (!e.target.classList.contains('delete-btn')) return;
@@ -347,12 +353,29 @@
         });
 
         const productInput = document.getElementById('productImage');
-        const productFileName = document.getElementById('product-file-name');
+        const productPreview = document.getElementById('product-preview');
         productInput.addEventListener('change', () => {
+            productPreview.innerHTML = '';
             if (productInput.files.length > 0) {
-                productFileName.textContent = productInput.files[0].name;
-            } else {
-                productFileName.textContent = '';
+                const file = productInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const container = document.createElement('div');
+                    container.className = 'preview-image-container';
+
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'preview-image';
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'preview-delete-btn';
+                    deleteBtn.textContent = 'X';
+
+                    container.appendChild(img);
+                    container.appendChild(deleteBtn);
+                    productPreview.appendChild(container);
+                }
+                reader.readAsDataURL(file);
             }
         });
     });
