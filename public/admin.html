@@ -58,13 +58,19 @@
             display: none;
         }
         .file-name-display {
-            margin-top: 0.5rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
             margin-bottom: 1rem;
-            font-style: italic;
-            color: #555;
-            text-align: center;
-            display: block;
-            min-height: 1.2em; /* Prevent layout shift */
+            min-height: 50px;
+        }
+        .preview-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -88,7 +94,7 @@
                     클릭하여 여러 이미지 선택
                 </label>
                 <input type="file" id="gallery-files-input" class="visually-hidden" accept="image/*" multiple>
-                <div id="gallery-file-name" class="file-name-display"></div>
+                <div id="gallery-preview" class="file-name-display"></div>
                 <button id="gallery-upload-btn">선택한 이미지들 업로드</button>
                 
                 <h2 style="margin-top: 3rem;">현재 갤러리</h2>
@@ -278,14 +284,20 @@
 
         // --- File Input Display ---
         const galleryInput = document.getElementById('gallery-files-input');
-        const galleryFileName = document.getElementById('gallery-file-name');
+        const galleryPreview = document.getElementById('gallery-preview');
         galleryInput.addEventListener('change', () => {
-            if (galleryInput.files.length > 1) {
-                galleryFileName.textContent = `${galleryInput.files.length}개의 파일이 선택되었습니다.`;
-            } else if (galleryInput.files.length === 1) {
-                galleryFileName.textContent = galleryInput.files[0].name;
-            } else {
-                galleryFileName.textContent = '';
+            galleryPreview.innerHTML = '';
+            if (galleryInput.files.length > 0) {
+                Array.from(galleryInput.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.className = 'preview-image';
+                        galleryPreview.appendChild(img);
+                    }
+                    reader.readAsDataURL(file);
+                });
             }
         });
 
