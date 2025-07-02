@@ -1,8 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
+const cookieSession = require('cookie-session');
 const cloudinary = require('cloudinary').v2;
 
 const app = express();
@@ -16,18 +15,17 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-app.use(session({
-    store: new FileStore({ path: '/tmp/sessions', logFn: function() {} }),
-    secret: 'your-secret-key',
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000 // 24시간
-    }
-}));
+app.set('trust proxy', 1);
+app.use(
+  cookieSession({
+    name: 'session',
+    keys: [process.env.SESSION_SECRET || 'your-secret-key'],
+    maxAge: 24 * 60 * 60 * 1000,     // 24시간
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax',
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // JSON 요청 본문을 처리하기 위해 추가
 
@@ -139,27 +137,16 @@ app.get('/admin.html', authMiddleware, (req, res) => res.sendFile(path.join(__di
 app.get('/admin', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.post('/login', (req, res) => {
     console.log('로그인 시도:', req.body);
-    console.log('입력된 비밀번호:', req.body.password);
-    console.log('설정된 비밀번호:', ADMIN_PASSWORD);
-    
     if (req.body.password === ADMIN_PASSWORD) {
-        console.log('비밀번호 일치 - 세션 설정');
         req.session.isAuthenticated = true;
-        req.session.save((err) => {
-            if (err) {
-                console.error('세션 저장 오류:', err);
-            } else {
-                console.log('세션 저장 성공');
-            }
-            res.redirect('/admin');
-        });
+        res.redirect('/admin');
     } else {
-        console.log('비밀번호 불일치');
         res.redirect('/login');
     }
 });
 app.get('/logout', (req, res) => {
-    req.session.destroy(() => res.redirect('/'));
+    req.session = null;
+    res.redirect('/');
 });
 
 // public 폴더의 정적 파일을 라우트 핸들러 뒤에서 제공합니다.
