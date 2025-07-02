@@ -8,7 +8,7 @@ const { Pool } = require('pg');
 
 const app = express();
 const port = process.env.PORT || 7000;
-const ADMIN_PASSWORD = 'bea1234!';
+const ADMIN_PASSWORD = 'bae1234!';
 
 // PostgreSQL 연결 설정
 const pool = new Pool({
