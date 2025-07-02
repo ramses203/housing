@@ -19,7 +19,7 @@ if (url) {
     const match = url.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
     if (match) {
         const [ , apiKey, apiSecret, cloudName] = match;
-        // placeholder 값인지 확인
+        // placeholder 값인지 확 인
         if (!apiKey.startsWith('CLOUDINARY_') && !apiSecret.startsWith('CLOUDINARY_') && !cloudName.startsWith('CLOUDINARY_')) {
             cloudinaryOptions = { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true };
             parsedOk = true;
