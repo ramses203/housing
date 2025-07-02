@@ -13,15 +13,15 @@ const PRODUCTS_FILE_PATH = isProd ? '/tmp/products.json' : path.join(__dirname, 
 
 // Cloudinary 설정
 if (process.env.CLOUDINARY_URL) {
-    // Vercel 등에서 CLOUDINARY_URL이 한 번에 제공되는 경우
-    cloudinary.config({
-        secure: true
-    });
+    // 환경변수 하나로 설정된 경우: 모든 정보 자동 로드 후 secure 옵션만 추가
+    cloudinary.config();           // env에서 cloud_name, api_key, api_secret 불러옴
+    cloudinary.config({ secure: true });
 } else {
     cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true
     });
 }
 
