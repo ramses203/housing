@@ -14,32 +14,38 @@ const PRODUCTS_FILE_PATH = isProd ? '/tmp/products.json' : path.join(__dirname, 
 // Cloudinary 설정
 let cloudinaryOptions = { secure: true };
 const url = process.env.CLOUDINARY_URL;
+let parsedOk = false;
 if (url) {
-    // cloudinary://<api_key>:<api_secret>@<cloud_name>
     const match = url.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
     if (match) {
+        const [ , apiKey, apiSecret, cloudName] = match;
+        // placeholder 값인지 확인
+        if (!apiKey.startsWith('CLOUDINARY_') && !apiSecret.startsWith('CLOUDINARY_') && !cloudName.startsWith('CLOUDINARY_')) {
+            cloudinaryOptions = { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true };
+            parsedOk = true;
+        } else {
+            console.warn('CLOUDINARY_URL 에 placeholder 값이 포함되어 있어 무시합니다.');
+        }
+    } else {
+        console.warn('CLOUDINARY_URL 형식이 올바르지 않습니다.');
+    }
+}
+
+if (!parsedOk) {
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
         cloudinaryOptions = {
-            cloud_name: match[3],
-            api_key: match[1],
-            api_secret: match[2],
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET,
             secure: true
         };
     } else {
-        console.error('CLOUDINARY_URL 형식이 잘못되었습니다.');
+        console.error('Cloudinary 환경변수가 올바르게 설정되지 않았습니다.');
     }
-} else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-    cloudinaryOptions = {
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-        secure: true
-    };
-} else {
-    console.error('Cloudinary 환경변수가 설정되지 않았습니다.');
 }
 
 cloudinary.config(cloudinaryOptions);
-console.log('Cloudinary config:', cloudinaryOptions);
+console.log('Cloudinary 최종 설정:', cloudinaryOptions);
 
 app.set('trust proxy', 1);
 app.use(
