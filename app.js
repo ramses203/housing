@@ -12,20 +12,34 @@ const GALLERY_FILE_PATH = isProd ? '/tmp/gallery.json' : path.join(__dirname, 'd
 const PRODUCTS_FILE_PATH = isProd ? '/tmp/products.json' : path.join(__dirname, 'data', 'products.json');
 
 // Cloudinary 설정
-if (process.env.CLOUDINARY_URL) {
-    // 환경변수 하나로 설정된 경우: 모든 정보 자동 로드 후 secure 옵션만 추가
-    cloudinary.config();           // env에서 cloud_name, api_key, api_secret 불러옴
-    cloudinary.config({ secure: true });
-} else {
-    cloudinary.config({
+let cloudinaryOptions = { secure: true };
+const url = process.env.CLOUDINARY_URL;
+if (url) {
+    // cloudinary://<api_key>:<api_secret>@<cloud_name>
+    const match = url.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
+    if (match) {
+        cloudinaryOptions = {
+            cloud_name: match[3],
+            api_key: match[1],
+            api_secret: match[2],
+            secure: true
+        };
+    } else {
+        console.error('CLOUDINARY_URL 형식이 잘못되었습니다.');
+    }
+} else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    cloudinaryOptions = {
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
         api_secret: process.env.CLOUDINARY_API_SECRET,
         secure: true
-    });
+    };
+} else {
+    console.error('Cloudinary 환경변수가 설정되지 않았습니다.');
 }
 
-console.log('Cloudinary cloud_name:', cloudinary.config().cloud_name);
+cloudinary.config(cloudinaryOptions);
+console.log('Cloudinary config:', cloudinaryOptions);
 
 app.set('trust proxy', 1);
 app.use(
