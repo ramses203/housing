@@ -94,9 +94,13 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1><a href="/" style="color:white; text-decoration:none;">청정 황토방 - 관리자</a></h1>
-        <nav><a href="/logout" style="color:white; text-decoration: none;">로그아웃</a></nav>
+    <header class="header">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="/" class="logo">청정 황토방 - 관리자</a>
+            <nav>
+                <a href="/logout" class="btn btn-primary">로그아웃</a>
+            </nav>
+        </div>
     </header>
 
     <main>
@@ -142,7 +146,7 @@
         </div>
     </main>
 
-    <footer>
+    <footer class="footer">
         <p>&copy; 2025 청정 황토방. All rights reserved.</p>
     </footer>
 

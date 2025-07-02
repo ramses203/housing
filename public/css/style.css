@@ -178,21 +178,46 @@ img {
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-sm);
     transition: all 0.3s ease;
+    text-align: center;
 }
 .about-item:hover {
     transform: translateY(-5px);
     box-shadow: var(--shadow-md);
-}
-
-.about-icon {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 1.5rem;
+    color: var(--heading-color);
 }
 
 .about-item h3 {
+    margin: 1.5rem 0 0.5rem;
+    font-size: 1.25rem;
     color: var(--heading-color);
-    margin-bottom: 0.5rem;
+}
+
+.about-icon {
+    width: 70px;
+    height: 70px;
+    background-color: var(--light-gray-color);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+    transition: all 0.3s ease;
+}
+
+.about-icon svg {
+    width: 35px;
+    height: 35px;
+    color: var(--heading-color);
+    overflow: visible;
+}
+
+.about-item:hover .about-icon {
+    background-color: var(--primary-color);
+}
+
+.about-item:hover .about-icon svg {
+    color: var(--white-color);
+    transform: scale(1.1);
 }
 
 /* Feature Section */
@@ -322,6 +347,51 @@ img {
 }
 #contact-form button {
     width: 100%;
+}
+
+.contact-main {
+    max-width: 800px;
+    margin: 4rem auto 0;
+    text-align: center;
+    background-color: var(--surface-color);
+    padding: 3rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+}
+
+.contact-main h3 {
+    font-size: 1.75rem;
+    color: var(--heading-color);
+    margin-bottom: 0.5rem;
+}
+
+.contact-info {
+    margin: 2rem 0;
+}
+
+.contact-phone {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+.contact-phone:hover {
+    color: var(--heading-color);
+}
+
+#map {
+    width: 100%;
+    height: 350px;
+    background-color: var(--light-gray-color);
+    border-radius: var(--border-radius);
+    margin-top: 1.5rem;
+    border: 1px solid #eee;
+}
+
+.contact-address {
+    font-size: 1.1rem;
+    color: var(--gray-color);
 }
 
 /* Footer */

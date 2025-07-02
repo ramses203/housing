@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -6,14 +8,14 @@ const { Pool } = require('pg');
 
 const app = express();
 const port = process.env.PORT || 7000;
-const ADMIN_PASSWORD = 'admin';
+const ADMIN_PASSWORD = 'bea1234!';
 
 // PostgreSQL 연결 설정
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false } 
+    : false,
 });
 
 // 데이터베이스 테이블 초기화
