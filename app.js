@@ -39,8 +39,8 @@ if (!parsedOk) {
             api_secret: process.env.CLOUDINARY_API_SECRET,
             secure: true
         };
-    } else {
-        console.error('Cloudinary 환경변수가 올바르게 설정되지 않았습니다.');
+    } else { 
+        console.error('Cloudinary 환경변수가 올바르게 설정되지 않았습니다');
     }
 }
 
