@@ -7,6 +7,9 @@ const cloudinary = require('cloudinary').v2;
 const app = express();
 const port = process.env.PORT || 7000;
 const ADMIN_PASSWORD = 'admin';
+const isProd = process.env.NODE_ENV === 'production';
+const GALLERY_FILE_PATH = isProd ? '/tmp/gallery.json' : path.join(__dirname, 'data', 'gallery.json');
+const PRODUCTS_FILE_PATH = isProd ? '/tmp/products.json' : path.join(__dirname, 'data', 'products.json');
 
 // Cloudinary 설정
 cloudinary.config({
@@ -40,8 +43,12 @@ const authMiddleware = (req, res, next) => {
 
 // 갤러리 이미지 목록 API
 app.get('/api/images', (req, res) => {
-    fs.readFile(path.join(__dirname, 'data', 'gallery.json'), 'utf8', (err, data) => {
-        if (err) return res.json([]);
+    fs.readFile(GALLERY_FILE_PATH, 'utf8', (err, data) => {
+        if (err) {
+            // 프로덕션에서 /tmp 파일이 없으면 초기 빈 배열 생성
+            if (isProd && err.code === 'ENOENT') return res.json([]);
+            return res.json([]);
+        }
         res.json(JSON.parse(data));
     });
 });
@@ -50,14 +57,10 @@ app.get('/api/images', (req, res) => {
 app.post('/api/images', authMiddleware, (req, res) => {
     console.log('POST /api/images 요청 받음:', req.body); // 요청 본문 로깅
     const newImage = { url: req.body.url, public_id: req.body.public_id };
-    const galleryFilePath = path.join(__dirname, 'data', 'gallery.json');
-    fs.readFile(galleryFilePath, 'utf8', (err, data) => {
-        if (err) {
-            console.error('갤러리 파일 읽기 오류:', err);
-        }
+    fs.readFile(GALLERY_FILE_PATH, 'utf8', (err, data) => {
         const images = (err || !data) ? [] : JSON.parse(data);
         images.push(newImage);
-        fs.writeFile(galleryFilePath, JSON.stringify(images, null, 2), (writeErr) => {
+        fs.writeFile(GALLERY_FILE_PATH, JSON.stringify(images, null, 2), (writeErr) => {
             if (writeErr) {
                 console.error('갤러리 파일 쓰기 오류:', writeErr);
                 return res.status(500).json({ success: false, error: 'Failed to save image data.' });
@@ -73,11 +76,10 @@ app.delete('/api/images/:public_id', authMiddleware, (req, res) => {
     const public_id = decodeURIComponent(req.params.public_id);
     cloudinary.uploader.destroy(public_id, (error, result) => {
         if (error) return res.status(500).json({ success: false, error: 'Cloudinary 삭제 실패' });
-        const galleryFilePath = path.join(__dirname, 'data', 'gallery.json');
-        fs.readFile(galleryFilePath, 'utf8', (err, data) => {
+        fs.readFile(GALLERY_FILE_PATH, 'utf8', (err, data) => {
             if (err) return res.json({ success: true }); // 파일이 없어도 성공으로 간주
             const images = JSON.parse(data).filter(img => img.public_id !== public_id);
-            fs.writeFile(galleryFilePath, JSON.stringify(images, null, 2), () => res.json({ success: true }));
+            fs.writeFile(GALLERY_FILE_PATH, JSON.stringify(images, null, 2), () => res.json({ success: true }));
         });
     });
 });
@@ -93,19 +95,17 @@ app.post('/admin/product', authMiddleware, (req, res) => {
         image: productImage,
         cloudinary_id: cloudinaryId
     };
-    const productsFilePath = path.join(__dirname, 'data', 'products.json');
-    fs.readFile(productsFilePath, 'utf8', (err, data) => {
+    fs.readFile(PRODUCTS_FILE_PATH, 'utf8', (err, data) => {
         const products = (err || !data) ? [] : JSON.parse(data);
         products.push(newProduct);
-        fs.writeFile(productsFilePath, JSON.stringify(products, null, 2), () => res.json({ success: true }));
+        fs.writeFile(PRODUCTS_FILE_PATH, JSON.stringify(products, null, 2), () => res.json({ success: true }));
     });
 });
 
 // 상품 삭제 API (기존 로직과 거의 동일, Cloudinary ID를 사용)
 app.delete('/api/products/:id', authMiddleware, (req, res) => {
     const { id } = req.params;
-    const productsFilePath = path.join(__dirname, 'data', 'products.json');
-    fs.readFile(productsFilePath, 'utf8', (err, data) => {
+    fs.readFile(PRODUCTS_FILE_PATH, 'utf8', (err, data) => {
         if (err) return res.status(500).json({ success: false, error: '상품 데이터 읽기 실패' });
         let products = JSON.parse(data);
         const productToDelete = products.find(p => p.id == id);
@@ -114,17 +114,16 @@ app.delete('/api/products/:id', authMiddleware, (req, res) => {
             cloudinary.uploader.destroy(productToDelete.cloudinary_id);
         }
         const updatedProducts = products.filter(p => p.id != id);
-        fs.writeFile(productsFilePath, JSON.stringify(updatedProducts, null, 2), (writeErr) => {
+        fs.writeFile(PRODUCTS_FILE_PATH, JSON.stringify(updatedProducts, null, 2), (writeErr) => {
             if (writeErr) return res.status(500).json({ success: false, error: '상품 데이터 쓰기 실패' });
             res.json({ success: true });
         });
     });
 });
 
-
 // 상품 목록 API
 app.get('/api/products', (req, res) => {
-    fs.readFile(path.join(__dirname, 'data', 'products.json'), 'utf8', (err, data) => {
+    fs.readFile(PRODUCTS_FILE_PATH, 'utf8', (err, data) => {
         if (err) return res.json([]);
         res.json(JSON.parse(data));
     });
