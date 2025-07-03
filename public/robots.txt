@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://saebyeokhousing.kr/sitemap.xml 
+Sitemap: https://dawn-housing.vercel.app/sitemap.xml 
