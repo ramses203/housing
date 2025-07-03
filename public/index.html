@@ -116,11 +116,15 @@
                         건축 전문가가 상세하고 친절하게 상담해 드립니다.
                     </p>
                     <div class="contact-info">
-                        <strong>전화:</strong> <a href="tel:010-5211-8904" class="contact-phone">010-5211-8904</a>
+                        <ul>
+                            <li><strong>TEL:</strong> <a href="tel:0415238904">(041)523-8904</a></li>
+                            <li><strong>FAX:</strong> (041)523-8905</li>
+                            <li><strong>Email:</strong> <a href="mailto:saebyeok04@naver.com">saebyeok04@naver.com</a></li>
+                        </ul>
                     </div>
                     <div class="address-map-container">
                         <div class="contact-address">
-                            <strong>주소:</strong> 강원도 자연군 건강로 123
+                            <strong>주소:</strong> 충남 천안시 동남구 목천읍 도전마을길88
                         </div>
                         <div id="map"></div>
                     </div>
@@ -222,27 +226,35 @@
     </script>
 
     <!-- Kakao Maps API -->
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=20ed954846c29b5c59a62f7c21af03e1&autoload=false"></script>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=20ed954846c29b5c59a62f7c21af03e1&autoload=false&libraries=services"></script>
     <script>
         kakao.maps.load(function() {
-            try {
-                var mapContainer = document.getElementById('map'), // 지도를 표시할 div 
-                    mapOption = { 
-                        center: new kakao.maps.LatLng(37.8854, 127.7298), // 지도의 중심좌표 (예: 강원도청)
-                        level: 4 // 지도의 확대 레벨
-                    };
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) return;
 
-                var map = new kakao.maps.Map(mapContainer, mapOption);
+            const address = '충남 천안시 동남구 목천읍 도전마을길88';
+            const geocoder = new kakao.maps.services.Geocoder();
 
-                var markerPosition  = new kakao.maps.LatLng(37.8854, 127.7298); 
-                var marker = new kakao.maps.Marker({
-                    position: markerPosition
-                });
-                marker.setMap(map);
-            } catch (e) {
-                console.error("카카오맵을 불러오는 중 오류가 발생했습니다.", e);
-                document.getElementById('map').innerText = '지도를 불러오는데 실패했습니다.';
-            }
+            geocoder.addressSearch(address, function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+
+                    // 지도 초기화
+                    const map = new kakao.maps.Map(mapContainer, {
+                        center: coords,
+                        level: 4
+                    });
+
+                    // 마커 생성
+                    new kakao.maps.Marker({
+                        map: map,
+                        position: coords
+                    });
+                } else {
+                    console.error('주소 좌표 변환 실패:', status);
+                    mapContainer.innerText = '지도를 불러오는데 실패했습니다.';
+                }
+            });
         });
     </script>
 </body>

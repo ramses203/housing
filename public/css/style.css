@@ -322,6 +322,21 @@ img {
 }
 .contact-info li {
     margin-bottom: 1rem;
+    font-size: 1.1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.contact-info li strong {
+    width: 60px;
+    color: var(--primary-color);
+}
+.contact-info li a {
+    color: var(--heading-color);
+    text-decoration: none;
+}
+.contact-info li a:hover {
+    text-decoration: underline;
 }
 .map-placeholder {
     height: 200px;
@@ -391,7 +406,14 @@ img {
 
 .contact-address {
     font-size: 1.1rem;
-    color: var(--gray-color);
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    color: var(--heading-color);
+}
+.contact-address strong {
+    width: 60px;
+    color: var(--primary-color);
 }
 
 /* Footer */
