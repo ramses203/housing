@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블로그 - 새벽하우징 - 황토방 풍경</title>
+    <meta name="description" content="새벽하우징의 시공 이야기, 황토집 관리 팁, 건축 노하우를 공유합니다.">
+    <link rel="canonical" href="https://dawn-housing.vercel.app/blog.html">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.8/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="css/style.css">
+    <meta property="og:title" content="블로그 - 새벽하우징">
+    <meta property="og:description" content="새벽하우징의 시공 이야기, 황토집 관리 팁, 건축 노하우를 공유합니다.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dawn-housing.vercel.app/blog.html">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">새벽하우징 - 황토방 풍경</a>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/#about">회사 소개</a></li>
+                    <li><a href="/#features">건축 철학</a></li>
+                    <li><a href="/#gallery">시공 사례</a></li>
+                    <li><a href="/blog.html">블로그</a></li>
+                    <li><a href="/#contact">문의하기</a></li>
+                </ul>
+            </nav>
+            <a href="/#contact" class="btn btn-primary">시공 문의</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container">
+                <h1 class="section-title text-center">블로그</h1>
+                <p class="section-description text-center">새벽하우징의 시공 이야기와 건축 노하우를 공유합니다.</p>
+                
+                <div id="blog-posts-container" class="blog-posts-grid">
+                    <!-- 블로그 포스트 카드가 여기에 동적으로 추가됩니다 -->
+                </div>
+                
+                <div id="no-posts-message" style="display: none; text-align: center; padding: 3rem; color: #666;">
+                    <p>아직 작성된 블로그 포스트가 없습니다.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 새벽하우징 - 황토방 풍경. All Rights Reserved. | <a href="/admin.html">관리자 페이지</a></p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const postsContainer = document.getElementById('blog-posts-container');
+            const noPostsMessage = document.getElementById('no-posts-message');
+
+            try {
+                const response = await fetch('/api/blog/posts');
+                const posts = await response.json();
+
+                if (posts.length === 0) {
+                    noPostsMessage.style.display = 'block';
+                    return;
+                }
+
+                posts.forEach(post => {
+                    const card = document.createElement('div');
+                    card.className = 'blog-card';
+                    
+                    // 본문에서 텍스트만 추출하여 요약 생성 (최대 150자)
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = post.content;
+                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                    const excerpt = textContent.substring(0, 150) + (textContent.length > 150 ? '...' : '');
+                    
+                    // 날짜 포맷팅
+                    const createdDate = new Date(post.created_at).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    
+                    // 썸네일이 있으면 표시, 없으면 기본 이미지
+                    const thumbnailHtml = post.thumbnail 
+                        ? `<img src="${post.thumbnail}" alt="${post.title}" class="blog-card-thumbnail">`
+                        : `<div class="blog-card-no-thumbnail"><span>📝</span></div>`;
+                    
+                    card.innerHTML = `
+                        <a href="/blog-post.html?id=${post.id}" class="blog-card-link">
+                            ${thumbnailHtml}
+                            <div class="blog-card-content">
+                                <h2 class="blog-card-title">${post.title}</h2>
+                                <p class="blog-card-excerpt">${excerpt}</p>
+                                <div class="blog-card-meta">
+                                    <span class="blog-card-author">${post.author || '새벽하우징'}</span>
+                                    <span class="blog-card-date">${createdDate}</span>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                    
+                    postsContainer.appendChild(card);
+                });
+            } catch (error) {
+                console.error('블로그 포스트 로딩 오류:', error);
+                noPostsMessage.textContent = '블로그 포스트를 불러오는데 실패했습니다.';
+                noPostsMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
+

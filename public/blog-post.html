@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">블로그 포스트 - 새벽하우징</title>
+    <meta name="description" id="page-description" content="새벽하우징의 블로그 포스트">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.8/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Quill 에디터 스타일 (읽기 전용 뷰를 위해) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">새벽하우징 - 황토방 풍경</a>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/#about">회사 소개</a></li>
+                    <li><a href="/#features">건축 철학</a></li>
+                    <li><a href="/#gallery">시공 사례</a></li>
+                    <li><a href="/blog.html">블로그</a></li>
+                    <li><a href="/#contact">문의하기</a></li>
+                </ul>
+            </nav>
+            <a href="/#contact" class="btn btn-primary">시공 문의</a>
+        </div>
+    </header>
+
+    <main>
+        <article class="section blog-post-section">
+            <div class="container">
+                <div class="blog-post-header">
+                    <a href="/blog.html" class="blog-back-link">← 블로그 목록으로 돌아가기</a>
+                    <h1 id="post-title" class="blog-post-title"></h1>
+                    <div class="blog-post-meta">
+                        <span id="post-author" class="blog-post-author"></span>
+                        <span id="post-date" class="blog-post-date"></span>
+                    </div>
+                </div>
+                
+                <div id="post-thumbnail" class="blog-post-thumbnail" style="display: none;">
+                    <img id="thumbnail-image" src="" alt="">
+                </div>
+                
+                <div id="post-content" class="blog-post-content ql-editor">
+                    <!-- 블로그 포스트 내용이 여기에 표시됩니다 -->
+                </div>
+                
+                <div id="error-message" style="display: none; text-align: center; padding: 3rem; color: #666;">
+                    <p>포스트를 불러올 수 없습니다.</p>
+                    <a href="/blog.html" class="btn btn-primary" style="margin-top: 1rem;">블로그 목록으로 돌아가기</a>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 새벽하우징 - 황토방 풍경. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // URL에서 포스트 ID 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            const postId = urlParams.get('id');
+
+            if (!postId) {
+                document.getElementById('error-message').style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/blog/posts/${postId}`);
+                
+                if (!response.ok) {
+                    throw new Error('포스트를 찾을 수 없습니다.');
+                }
+
+                const post = await response.json();
+
+                // 제목 설정
+                document.getElementById('post-title').textContent = post.title;
+                document.getElementById('page-title').textContent = `${post.title} - 새벽하우징 블로그`;
+
+                // 작성자 및 날짜 설정
+                document.getElementById('post-author').textContent = post.author || '새벽하우징';
+                const createdDate = new Date(post.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                document.getElementById('post-date').textContent = createdDate;
+
+                // 썸네일 설정 (있는 경우)
+                if (post.thumbnail) {
+                    const thumbnailContainer = document.getElementById('post-thumbnail');
+                    const thumbnailImage = document.getElementById('thumbnail-image');
+                    thumbnailImage.src = post.thumbnail;
+                    thumbnailImage.alt = post.title;
+                    thumbnailContainer.style.display = 'block';
+                }
+
+                // 본문 내용 설정
+                document.getElementById('post-content').innerHTML = post.content;
+
+                // 메타 설명 업데이트 (SEO)
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = post.content;
+                const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                const excerpt = textContent.substring(0, 160);
+                document.getElementById('page-description').setAttribute('content', excerpt);
+
+            } catch (error) {
+                console.error('블로그 포스트 로딩 오류:', error);
+                document.getElementById('error-message').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
+
