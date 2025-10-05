@@ -4,54 +4,51 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const cookieSession = require('cookie-session');
-const Database = require('better-sqlite3');
+const { sql } = require('@vercel/postgres');
 
 const app = express();
 const port = process.env.PORT || 7000;
 const ADMIN_PASSWORD = 'bae1234!';
 
-// SQLite 데이터베이스 연결
-const db = new Database('housing.db', { verbose: console.log });
-
 // 데이터베이스 테이블 초기화
-function initDatabase() {
+async function initDatabase() {
   try {
     // 갤러리 테이블 생성
-    db.exec(`
+    await sql`
       CREATE TABLE IF NOT EXISTS gallery (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         url TEXT NOT NULL,
         public_id TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
     
     // 상품 테이블 생성
-    db.exec(`
+    await sql`
       CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         price INTEGER NOT NULL,
         description TEXT,
         image TEXT NOT NULL,
         cloudinary_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `;
     
     // 블로그 포스트 테이블 생성
-    db.exec(`
+    await sql`
       CREATE TABLE IF NOT EXISTS blog_posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
         thumbnail TEXT,
         author TEXT DEFAULT '새벽하우징',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         published INTEGER DEFAULT 1
       )
-    `);
+    `;
     
     console.log('데이터베이스 테이블 초기화 완료');
   } catch (error) {
@@ -86,10 +83,9 @@ const authMiddleware = (req, res, next) => {
 // --- API 라우트 ---
 
 // 갤러리 이미지 목록 API
-app.get('/api/images', (req, res) => {
+app.get('/api/images', async (req, res) => {
     try {
-        const stmt = db.prepare('SELECT * FROM gallery ORDER BY created_at DESC');
-        const rows = stmt.all();
+        const { rows } = await sql`SELECT * FROM gallery ORDER BY created_at DESC`;
         res.json(rows);
     } catch (error) {
         console.error('갤러리 조회 오류:', error);
@@ -98,13 +94,12 @@ app.get('/api/images', (req, res) => {
 });
 
 // 갤러리 이미지 정보 저장 API
-app.post('/api/images', authMiddleware, (req, res) => {
+app.post('/api/images', authMiddleware, async (req, res) => {
     console.log('POST /api/images 요청 받음:', req.body);
     const { url, public_id } = req.body;
     
     try {
-        const stmt = db.prepare('INSERT INTO gallery (url, public_id) VALUES (?, ?)');
-        stmt.run(url, public_id);
+        await sql`INSERT INTO gallery (url, public_id) VALUES (${url}, ${public_id})`;
         console.log('갤러리 데이터베이스에 성공적으로 저장됨.');
         res.json({ success: true });
     } catch (error) {
@@ -114,12 +109,11 @@ app.post('/api/images', authMiddleware, (req, res) => {
 });
 
 // 갤러리 이미지 삭제 API
-app.delete('/api/images/:public_id', authMiddleware, (req, res) => {
+app.delete('/api/images/:public_id', authMiddleware, async (req, res) => {
     const public_id = decodeURIComponent(req.params.public_id);
     
     try {
-        const stmt = db.prepare('DELETE FROM gallery WHERE public_id = ?');
-        stmt.run(public_id);
+        await sql`DELETE FROM gallery WHERE public_id = ${public_id}`;
         console.log('갤러리에서 성공적으로 삭제됨.');
         res.json({ success: true });
     } catch (error) {
@@ -129,12 +123,14 @@ app.delete('/api/images/:public_id', authMiddleware, (req, res) => {
 });
 
 // 상품 추가 처리
-app.post('/admin/product', authMiddleware, (req, res) => {
+app.post('/admin/product', authMiddleware, async (req, res) => {
     const { productName, productPrice, productDescription, productImage, cloudinaryId } = req.body;
     
     try {
-        const stmt = db.prepare('INSERT INTO products (name, price, description, image, cloudinary_id) VALUES (?, ?, ?, ?, ?)');
-        stmt.run(productName, parseInt(productPrice, 10), productDescription, productImage, cloudinaryId);
+        await sql`
+            INSERT INTO products (name, price, description, image, cloudinary_id) 
+            VALUES (${productName}, ${parseInt(productPrice, 10)}, ${productDescription}, ${productImage}, ${cloudinaryId})
+        `;
         console.log('상품이 데이터베이스에 성공적으로 저장됨.');
         res.json({ success: true });
     } catch (error) {
@@ -144,13 +140,12 @@ app.post('/admin/product', authMiddleware, (req, res) => {
 });
 
 // 상품 삭제 API
-app.delete('/api/products/:id', authMiddleware, (req, res) => {
+app.delete('/api/products/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     
     try {
-        const stmt = db.prepare('DELETE FROM products WHERE id = ?');
-        const result = stmt.run(id);
-        if (result.changes > 0) {
+        const result = await sql`DELETE FROM products WHERE id = ${id}`;
+        if (result.rowCount > 0) {
             console.log('상품이 성공적으로 삭제됨.');
             res.json({ success: true });
         } else {
@@ -163,10 +158,9 @@ app.delete('/api/products/:id', authMiddleware, (req, res) => {
 });
 
 // 상품 목록 API
-app.get('/api/products', (req, res) => {
+app.get('/api/products', async (req, res) => {
     try {
-        const stmt = db.prepare('SELECT * FROM products ORDER BY created_at DESC');
-        const rows = stmt.all();
+        const { rows } = await sql`SELECT * FROM products ORDER BY created_at DESC`;
         res.json(rows);
     } catch (error) {
         console.error('상품 조회 오류:', error);
@@ -177,11 +171,10 @@ app.get('/api/products', (req, res) => {
 // --- 블로그 API ---
 
 // 블로그 포스트 목록 조회 (공개)
-app.get('/api/blog/posts', (req, res) => {
+app.get('/api/blog/posts', async (req, res) => {
     try {
-        const stmt = db.prepare('SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
-        const posts = stmt.all();
-        res.json(posts);
+        const { rows } = await sql`SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC`;
+        res.json(rows);
     } catch (error) {
         console.error('블로그 포스트 조회 오류:', error);
         res.json([]);
@@ -189,13 +182,12 @@ app.get('/api/blog/posts', (req, res) => {
 });
 
 // 특정 블로그 포스트 상세 조회 (공개)
-app.get('/api/blog/posts/:id', (req, res) => {
+app.get('/api/blog/posts/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const stmt = db.prepare('SELECT * FROM blog_posts WHERE id = ? AND published = 1');
-        const post = stmt.get(id);
-        if (post) {
-            res.json(post);
+        const { rows } = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
+        if (rows.length > 0) {
+            res.json(rows[0]);
         } else {
             res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
         }
@@ -206,7 +198,7 @@ app.get('/api/blog/posts/:id', (req, res) => {
 });
 
 // 블로그 포스트 작성 (관리자 전용)
-app.post('/api/blog/posts', authMiddleware, (req, res) => {
+app.post('/api/blog/posts', authMiddleware, async (req, res) => {
     const { title, content, thumbnail, author } = req.body;
     
     if (!title || !content) {
@@ -214,10 +206,13 @@ app.post('/api/blog/posts', authMiddleware, (req, res) => {
     }
     
     try {
-        const stmt = db.prepare('INSERT INTO blog_posts (title, content, thumbnail, author) VALUES (?, ?, ?, ?)');
-        const result = stmt.run(title, content, thumbnail || null, author || '새벽하우징');
-        console.log('블로그 포스트 저장 완료:', result.lastInsertRowid);
-        res.json({ success: true, id: result.lastInsertRowid });
+        const { rows } = await sql`
+            INSERT INTO blog_posts (title, content, thumbnail, author) 
+            VALUES (${title}, ${content}, ${thumbnail || null}, ${author || '새벽하우징'})
+            RETURNING id
+        `;
+        console.log('블로그 포스트 저장 완료:', rows[0].id);
+        res.json({ success: true, id: rows[0].id });
     } catch (error) {
         console.error('블로그 포스트 저장 오류:', error);
         res.status(500).json({ error: 'Failed to save post.' });
@@ -225,19 +220,22 @@ app.post('/api/blog/posts', authMiddleware, (req, res) => {
 });
 
 // 블로그 포스트 수정 (관리자 전용)
-app.put('/api/blog/posts/:id', authMiddleware, (req, res) => {
+app.put('/api/blog/posts/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { title, content, thumbnail, published } = req.body;
     
     try {
-        const stmt = db.prepare(`
+        const result = await sql`
             UPDATE blog_posts 
-            SET title = ?, content = ?, thumbnail = ?, published = ?, updated_at = CURRENT_TIMESTAMP 
-            WHERE id = ?
-        `);
-        const result = stmt.run(title, content, thumbnail || null, published !== undefined ? published : 1, id);
+            SET title = ${title}, 
+                content = ${content}, 
+                thumbnail = ${thumbnail || null}, 
+                published = ${published !== undefined ? published : 1}, 
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ${id}
+        `;
         
-        if (result.changes > 0) {
+        if (result.rowCount > 0) {
             console.log('블로그 포스트 수정 완료:', id);
             res.json({ success: true });
         } else {
@@ -250,14 +248,13 @@ app.put('/api/blog/posts/:id', authMiddleware, (req, res) => {
 });
 
 // 블로그 포스트 삭제 (관리자 전용)
-app.delete('/api/blog/posts/:id', authMiddleware, (req, res) => {
+app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     
     try {
-        const stmt = db.prepare('DELETE FROM blog_posts WHERE id = ?');
-        const result = stmt.run(id);
+        const result = await sql`DELETE FROM blog_posts WHERE id = ${id}`;
         
-        if (result.changes > 0) {
+        if (result.rowCount > 0) {
             console.log('블로그 포스트 삭제 완료:', id);
             res.json({ success: true });
         } else {
