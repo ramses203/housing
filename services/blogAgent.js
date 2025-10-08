@@ -94,8 +94,8 @@ function extractKeywords(topic, keywords = null) {
  */
 async function generateBlogPost(topic, previousTitles = [], keywords = null) {
     try {
-        // Gemini 모델 선택
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        // Gemini 모델 선택 (최신 안정 모델 사용)
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
         // 중복 방지 프롬프트 생성
         const duplicationAvoidance = generateDuplicationAvoidancePrompt(previousTitles);
