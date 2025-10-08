@@ -88,7 +88,7 @@ const authMiddleware = (req, res, next) => {
 // 갤러리 이미지 목록 API
 app.get('/api/images', async (req, res) => {
     try {
-        const { rows } = await sql`SELECT * FROM gallery ORDER BY created_at DESC`;
+        const rows = await sql`SELECT * FROM gallery ORDER BY created_at DESC`;
         res.json(rows);
     } catch (error) {
         console.error('갤러리 조회 오류:', error);
@@ -163,7 +163,7 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
 // 상품 목록 API
 app.get('/api/products', async (req, res) => {
     try {
-        const { rows } = await sql`SELECT * FROM products ORDER BY created_at DESC`;
+        const rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
         res.json(rows);
     } catch (error) {
         console.error('상품 조회 오류:', error);
@@ -176,7 +176,7 @@ app.get('/api/products', async (req, res) => {
 // 블로그 포스트 목록 조회 (공개)
 app.get('/api/blog/posts', async (req, res) => {
     try {
-        const { rows } = await sql`SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC`;
+        const rows = await sql`SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC`;
         res.json(rows);
     } catch (error) {
         console.error('블로그 포스트 조회 오류:', error);
@@ -188,7 +188,7 @@ app.get('/api/blog/posts', async (req, res) => {
 app.get('/api/blog/posts/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const { rows } = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
+        const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
         if (rows.length > 0) {
             res.json(rows[0]);
         } else {
@@ -209,13 +209,13 @@ app.post('/api/blog/posts', authMiddleware, async (req, res) => {
     }
     
     try {
-        const { rows } = await sql`
+        const result = await sql`
             INSERT INTO blog_posts (title, content, thumbnail, author) 
             VALUES (${title}, ${content}, ${thumbnail || null}, ${author || '새벽하우징'})
             RETURNING id
         `;
-        console.log('블로그 포스트 저장 완료:', rows[0].id);
-        res.json({ success: true, id: rows[0].id });
+        console.log('블로그 포스트 저장 완료:', result[0].id);
+        res.json({ success: true, id: result[0].id });
     } catch (error) {
         console.error('블로그 포스트 저장 오류:', error);
         res.status(500).json({ error: 'Failed to save post.' });
