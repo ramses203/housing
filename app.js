@@ -4,11 +4,14 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const cookieSession = require('cookie-session');
-const { sql } = require('@vercel/postgres');
+const { neon } = require('@neondatabase/serverless');
 
 const app = express();
 const port = process.env.PORT || 7000;
 const ADMIN_PASSWORD = 'bae1234!';
+
+// Neon 데이터베이스 연결
+const sql = neon(process.env.DATABASE_URL);
 
 // 데이터베이스 테이블 초기화
 async function initDatabase() {
