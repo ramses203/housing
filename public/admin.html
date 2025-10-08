@@ -311,7 +311,7 @@
                     console.error('Cloudinary upload failed:', data);
                     throw new Error(data.error.message);
                 }
-                return data;
+                return data.secure_url;
             } catch (error) {
                 console.error('Error uploading to Cloudinary:', error);
                 alert('이미지 업로드에 실패했습니다. 자세한 내용은 콘솔을 확인해주세요.');
