@@ -263,53 +263,89 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     
     try {
+        console.log('블로그 포스트 삭제 시작:', id);
+        
         // 먼저 포스트 데이터를 가져옴 (이미지 URL 추출용)
         const posts = await sql`SELECT * FROM blog_posts WHERE id = ${id}`;
         
         if (posts.length === 0) {
+            console.log('포스트를 찾을 수 없음:', id);
             return res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
         }
         
         const post = posts[0];
-        const imagePublicIds = [];
-        
-        // 썸네일 이미지의 public_id 추출
-        if (post.thumbnail) {
-            const thumbnailMatch = post.thumbnail.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
-            if (thumbnailMatch) {
-                imagePublicIds.push(thumbnailMatch[1]);
-            }
-        }
-        
-        // 본문 내용에서 Cloudinary 이미지 URL 추출
-        if (post.content) {
-            const cloudinaryRegex = /https?:\/\/res\.cloudinary\.com\/[^\/]+\/image\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?(?=["'\s<])/g;
-            let match;
-            while ((match = cloudinaryRegex.exec(post.content)) !== null) {
-                imagePublicIds.push(match[1]);
-            }
-        }
-        
-        // Cloudinary에서 이미지들 삭제
-        const deletePromises = imagePublicIds.map(publicId => {
-            return cloudinary.uploader.destroy(publicId)
-                .then(result => {
-                    console.log(`Cloudinary 이미지 삭제 성공: ${publicId}`, result);
-                    return result;
-                })
-                .catch(err => {
-                    console.error(`Cloudinary 이미지 삭제 실패: ${publicId}`, err);
-                    // 이미지 삭제 실패해도 계속 진행
-                    return null;
-                });
+        console.log('포스트 데이터:', { 
+            id: post.id, 
+            title: post.title, 
+            thumbnail: post.thumbnail,
+            contentLength: post.content ? post.content.length : 0 
         });
         
-        await Promise.all(deletePromises);
+        const imagePublicIds = [];
+        
+        // 썸네일 이미지의 public_id 추출 (더 강력한 정규식)
+        if (post.thumbnail) {
+            console.log('썸네일 URL:', post.thumbnail);
+            // Cloudinary URL 형식: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/image_name.ext
+            const thumbnailMatch = post.thumbnail.match(/\/upload\/(?:v\d+\/)?(.*?)(?:\.[^.\/]+)?$/);
+            if (thumbnailMatch) {
+                const publicId = thumbnailMatch[1].replace(/\.[^.]+$/, ''); // 확장자 제거
+                imagePublicIds.push(publicId);
+                console.log('썸네일 public_id 추출:', publicId);
+            } else {
+                console.log('썸네일 public_id 추출 실패');
+            }
+        }
+        
+        // 본문 내용에서 Cloudinary 이미지 URL 추출 (더 강력한 정규식)
+        if (post.content) {
+            console.log('본문 내용 검색 시작...');
+            // src="https://res.cloudinary.com/..." 형태를 찾음
+            const cloudinaryRegex = /https?:\/\/res\.cloudinary\.com\/[^\/]+\/image\/upload\/(?:v\d+\/)?(.*?)(?:\.[^.\/\s"'<>]+)?(?=["'\s<>])/g;
+            let match;
+            let matchCount = 0;
+            while ((match = cloudinaryRegex.exec(post.content)) !== null) {
+                matchCount++;
+                const publicId = match[1].replace(/\.[^.]+$/, ''); // 확장자 제거
+                imagePublicIds.push(publicId);
+                console.log(`본문 이미지 ${matchCount} public_id 추출:`, publicId);
+            }
+            console.log(`본문에서 총 ${matchCount}개 이미지 찾음`);
+        }
+        
+        console.log('총 추출된 public_ids:', imagePublicIds);
+        console.log('Cloudinary 설정 상태:', {
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '설정됨' : '없음',
+            api_key: process.env.CLOUDINARY_API_KEY ? '설정됨' : '없음',
+            api_secret: process.env.CLOUDINARY_API_SECRET ? '설정됨' : '없음'
+        });
+        
+        // Cloudinary에서 이미지들 삭제
+        if (imagePublicIds.length > 0) {
+            console.log(`${imagePublicIds.length}개 이미지 삭제 시작...`);
+            const deletePromises = imagePublicIds.map(publicId => {
+                console.log('삭제 시도:', publicId);
+                return cloudinary.uploader.destroy(publicId)
+                    .then(result => {
+                        console.log(`✅ Cloudinary 이미지 삭제 성공: ${publicId}`, result);
+                        return result;
+                    })
+                    .catch(err => {
+                        console.error(`❌ Cloudinary 이미지 삭제 실패: ${publicId}`, err);
+                        // 이미지 삭제 실패해도 계속 진행
+                        return null;
+                    });
+            });
+            
+            await Promise.all(deletePromises);
+        } else {
+            console.log('삭제할 이미지가 없음');
+        }
         
         // 데이터베이스에서 포스트 삭제
         await sql`DELETE FROM blog_posts WHERE id = ${id}`;
         
-        console.log('블로그 포스트 삭제 완료:', id, `(이미지 ${imagePublicIds.length}개 삭제)`);
+        console.log('✅ 블로그 포스트 삭제 완료:', id, `(이미지 ${imagePublicIds.length}개 삭제 시도)`);
         res.json({ success: true, deletedImages: imagePublicIds.length });
     } catch (error) {
         console.error('블로그 포스트 삭제 오류:', error);
