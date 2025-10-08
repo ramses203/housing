@@ -5,10 +5,18 @@ const path = require('path');
 const fs = require('fs');
 const cookieSession = require('cookie-session');
 const { neon } = require('@neondatabase/serverless');
+const cloudinary = require('cloudinary').v2;
 
 const app = express();
 const port = process.env.PORT || 7000;
 const ADMIN_PASSWORD = 'bae1234!';
+
+// Cloudinary 설정
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Neon 데이터베이스 연결
 const sql = neon(process.env.DATABASE_URL);
@@ -255,11 +263,55 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     
     try {
+        // 먼저 포스트 데이터를 가져옴 (이미지 URL 추출용)
+        const posts = await sql`SELECT * FROM blog_posts WHERE id = ${id}`;
+        
+        if (posts.length === 0) {
+            return res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
+        }
+        
+        const post = posts[0];
+        const imagePublicIds = [];
+        
+        // 썸네일 이미지의 public_id 추출
+        if (post.thumbnail) {
+            const thumbnailMatch = post.thumbnail.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
+            if (thumbnailMatch) {
+                imagePublicIds.push(thumbnailMatch[1]);
+            }
+        }
+        
+        // 본문 내용에서 Cloudinary 이미지 URL 추출
+        if (post.content) {
+            const cloudinaryRegex = /https?:\/\/res\.cloudinary\.com\/[^\/]+\/image\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?(?=["'\s<])/g;
+            let match;
+            while ((match = cloudinaryRegex.exec(post.content)) !== null) {
+                imagePublicIds.push(match[1]);
+            }
+        }
+        
+        // Cloudinary에서 이미지들 삭제
+        const deletePromises = imagePublicIds.map(publicId => {
+            return cloudinary.uploader.destroy(publicId)
+                .then(result => {
+                    console.log(`Cloudinary 이미지 삭제 성공: ${publicId}`, result);
+                    return result;
+                })
+                .catch(err => {
+                    console.error(`Cloudinary 이미지 삭제 실패: ${publicId}`, err);
+                    // 이미지 삭제 실패해도 계속 진행
+                    return null;
+                });
+        });
+        
+        await Promise.all(deletePromises);
+        
+        // 데이터베이스에서 포스트 삭제
         const result = await sql`DELETE FROM blog_posts WHERE id = ${id}`;
         
         if (result.rowCount > 0) {
-            console.log('블로그 포스트 삭제 완료:', id);
-            res.json({ success: true });
+            console.log('블로그 포스트 삭제 완료:', id, `(이미지 ${imagePublicIds.length}개 삭제)`);
+            res.json({ success: true, deletedImages: imagePublicIds.length });
         } else {
             res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
         }

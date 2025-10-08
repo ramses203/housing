@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@neondatabase/serverless": "^0.10.3",
+    "cloudinary": "^2.7.0",
     "cookie-session": "^2.1.0",
     "dotenv": "^17.0.1",
     "express": "^4.19.2",
