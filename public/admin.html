@@ -244,18 +244,56 @@
         const quill = new Quill('#blogEditor', {
             theme: 'snow',
             modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    ['blockquote', 'code-block'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    ['link', 'image'],
-                    ['clean']
-                ]
+                toolbar: {
+                    container: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote', 'code-block'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        ['link', 'image'],
+                        ['clean']
+                    ],
+                    handlers: {
+                        image: imageHandler
+                    }
+                }
             },
             placeholder: '블로그 포스트 내용을 작성하세요...'
         });
+        
+        // Quill 에디터 이미지 핸들러 (Cloudinary 업로드)
+        function imageHandler() {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.click();
+
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (!file) return;
+
+                // 이미지 업로드 중 표시
+                const range = quill.getSelection(true);
+                quill.insertText(range.index, '이미지 업로드 중...');
+                quill.setSelection(range.index + 13);
+
+                try {
+                    const imageUrl = await uploadToCloudinary(file);
+                    
+                    // 업로드 중 텍스트 삭제
+                    quill.deleteText(range.index, 13);
+                    
+                    // 이미지 삽입
+                    quill.insertEmbed(range.index, 'image', imageUrl);
+                    quill.setSelection(range.index + 1);
+                } catch (error) {
+                    console.error('이미지 업로드 실패:', error);
+                    quill.deleteText(range.index, 13);
+                    alert('이미지 업로드에 실패했습니다.');
+                }
+            };
+        }
 
         // --- Helper Functions ---
         const uploadToCloudinary = async (file) => {
