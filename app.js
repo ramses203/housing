@@ -307,14 +307,10 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
         await Promise.all(deletePromises);
         
         // 데이터베이스에서 포스트 삭제
-        const result = await sql`DELETE FROM blog_posts WHERE id = ${id}`;
+        await sql`DELETE FROM blog_posts WHERE id = ${id}`;
         
-        if (result.rowCount > 0) {
-            console.log('블로그 포스트 삭제 완료:', id, `(이미지 ${imagePublicIds.length}개 삭제)`);
-            res.json({ success: true, deletedImages: imagePublicIds.length });
-        } else {
-            res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
-        }
+        console.log('블로그 포스트 삭제 완료:', id, `(이미지 ${imagePublicIds.length}개 삭제)`);
+        res.json({ success: true, deletedImages: imagePublicIds.length });
     } catch (error) {
         console.error('블로그 포스트 삭제 오류:', error);
         res.status(500).json({ error: 'Failed to delete post.' });
