@@ -55,9 +55,22 @@ async function initDatabase() {
         content TEXT NOT NULL,
         thumbnail TEXT,
         author TEXT DEFAULT '새벽하우징',
+        topic_id INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         published INTEGER DEFAULT 1
+      )
+    `;
+    
+    // 블로그 주제 테이블 생성
+    await sql`
+      CREATE TABLE IF NOT EXISTS blog_topics (
+        id SERIAL PRIMARY KEY,
+        topic TEXT NOT NULL,
+        keywords TEXT,
+        used BOOLEAN DEFAULT FALSE,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
     
@@ -69,6 +82,20 @@ async function initDatabase() {
 
 // 서버 시작 시 데이터베이스 초기화
 initDatabase();
+
+// 블로그 에이전트 스케줄러
+const { 
+    startScheduler, 
+    getSchedulerStatus, 
+    updateSchedulerConfig,
+    runBlogGeneration,
+    resetAllTopics 
+} = require('./services/scheduler');
+
+// 스케줄러 시작
+setTimeout(() => {
+    startScheduler(sql);
+}, 2000); // 서버 시작 2초 후 스케줄러 시작
 
 app.set('trust proxy', 1);
 app.use(
@@ -350,6 +377,115 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('블로그 포스트 삭제 오류:', error);
         res.status(500).json({ error: 'Failed to delete post.' });
+    }
+});
+
+// --- 블로그 에이전트 API ---
+
+// 주제 목록 조회
+app.get('/api/blog/topics', authMiddleware, async (req, res) => {
+    try {
+        const topics = await sql`SELECT * FROM blog_topics ORDER BY created_at DESC`;
+        res.json(topics);
+    } catch (error) {
+        console.error('주제 조회 오류:', error);
+        res.status(500).json({ error: 'Failed to fetch topics.' });
+    }
+});
+
+// 주제 추가
+app.post('/api/blog/topics', authMiddleware, async (req, res) => {
+    const { topic, keywords } = req.body;
+    
+    if (!topic) {
+        return res.status(400).json({ error: '주제는 필수입니다.' });
+    }
+    
+    try {
+        const result = await sql`
+            INSERT INTO blog_topics (topic, keywords)
+            VALUES (${topic}, ${keywords || null})
+            RETURNING id
+        `;
+        console.log('주제 추가 완료:', result[0].id);
+        res.json({ success: true, id: result[0].id });
+    } catch (error) {
+        console.error('주제 추가 오류:', error);
+        res.status(500).json({ error: 'Failed to add topic.' });
+    }
+});
+
+// 주제 삭제
+app.delete('/api/blog/topics/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const result = await sql`DELETE FROM blog_topics WHERE id = ${id}`;
+        
+        if (result.count > 0) {
+            console.log('주제 삭제 완료:', id);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: '주제를 찾을 수 없습니다.' });
+        }
+    } catch (error) {
+        console.error('주제 삭제 오류:', error);
+        res.status(500).json({ error: 'Failed to delete topic.' });
+    }
+});
+
+// 주제 리셋 (모든 주제를 미사용으로)
+app.post('/api/blog/topics/reset', authMiddleware, async (req, res) => {
+    try {
+        const count = await resetAllTopics(sql);
+        res.json({ success: true, resetCount: count });
+    } catch (error) {
+        console.error('주제 리셋 오류:', error);
+        res.status(500).json({ error: 'Failed to reset topics.' });
+    }
+});
+
+// 블로그 자동 생성 (수동 트리거)
+app.post('/api/blog/auto-generate', authMiddleware, async (req, res) => {
+    try {
+        const result = await runBlogGeneration(sql);
+        res.json(result);
+    } catch (error) {
+        console.error('블로그 자동 생성 오류:', error);
+        res.status(500).json({ error: 'Failed to generate blog post.' });
+    }
+});
+
+// 에이전트 상태 조회
+app.get('/api/blog/agent-status', authMiddleware, async (req, res) => {
+    try {
+        const status = getSchedulerStatus();
+        
+        // 미사용 주제 개수 조회
+        const unusedTopics = await sql`SELECT COUNT(*) as count FROM blog_topics WHERE used = FALSE`;
+        const totalTopics = await sql`SELECT COUNT(*) as count FROM blog_topics`;
+        
+        res.json({
+            ...status,
+            unusedTopicsCount: parseInt(unusedTopics[0].count),
+            totalTopicsCount: parseInt(totalTopics[0].count)
+        });
+    } catch (error) {
+        console.error('에이전트 상태 조회 오류:', error);
+        res.status(500).json({ error: 'Failed to fetch agent status.' });
+    }
+});
+
+// 에이전트 설정 업데이트
+app.put('/api/blog/agent-config', authMiddleware, async (req, res) => {
+    const { isEnabled, scheduleTime } = req.body;
+    
+    try {
+        updateSchedulerConfig({ isEnabled, scheduleTime }, sql);
+        res.json({ success: true, status: getSchedulerStatus() });
+    } catch (error) {
+        console.error('에이전트 설정 업데이트 오류:', error);
+        res.status(500).json({ error: 'Failed to update agent config.' });
     }
 });
 

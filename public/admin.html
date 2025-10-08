@@ -190,6 +190,7 @@
                 <button class="tab-link active" data-tab="gallery-management">갤러리 관리</button>
                 <button class="tab-link" data-tab="product-management">상품 관리</button>
                 <button class="tab-link" data-tab="blog-management">블로그 관리</button>
+                <button class="tab-link" data-tab="agent-management">AI 에이전트</button>
             </div>
 
             <!-- 갤러리 관리 탭 -->
@@ -251,6 +252,57 @@
 
                 <h2 style="margin-top: 3rem;">현재 블로그 포스트</h2>
                 <div id="blog-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+            </div>
+
+            <!-- AI 에이전트 관리 탭 -->
+            <div id="agent-management" class="tab-content">
+                <h2>블로그 자동 생성 에이전트</h2>
+                
+                <!-- 에이전트 상태 카드 -->
+                <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #ddd;">
+                    <h3 style="margin-top: 0;">에이전트 상태</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <p style="margin: 0.25rem 0; color: #666;">상태</p>
+                            <p id="agent-enabled-status" style="margin: 0.25rem 0; font-weight: bold;"></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0.25rem 0; color: #666;">실행 시간</p>
+                            <p id="agent-schedule-time" style="margin: 0.25rem 0; font-weight: bold;"></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0.25rem 0; color: #666;">미사용 주제</p>
+                            <p id="agent-unused-topics" style="margin: 0.25rem 0; font-weight: bold;"></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0.25rem 0; color: #666;">마지막 실행</p>
+                            <p id="agent-last-run" style="margin: 0.25rem 0; font-weight: bold;"></p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button id="generate-now-btn" style="flex: 1; background-color: #4caf50;">지금 생성하기</button>
+                        <button id="toggle-agent-btn" style="flex: 1;">활성화/비활성화</button>
+                        <button id="reset-topics-btn" style="flex: 1; background-color: #ff9800;">주제 리셋</button>
+                    </div>
+                </div>
+
+                <!-- 주제 추가 폼 -->
+                <h2>주제 추가</h2>
+                <form id="topic-add-form">
+                    <div class="form-group">
+                        <label for="topicTitle">주제</label>
+                        <input type="text" id="topicTitle" name="topicTitle" placeholder="예: 황토집의 장점과 건강에 미치는 영향" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="topicKeywords">키워드 (쉼표로 구분, 선택사항)</label>
+                        <input type="text" id="topicKeywords" name="topicKeywords" placeholder="예: 황토집, 건강, 자연">
+                    </div>
+                    <button type="submit">주제 추가하기</button>
+                </form>
+
+                <!-- 주제 목록 -->
+                <h2 style="margin-top: 3rem;">주제 목록</h2>
+                <div id="topic-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
             </div>
         </div>
     </main>
@@ -725,6 +777,210 @@
                 }
                 reader.readAsDataURL(file);
             }
+        });
+
+        // --- AI Agent Management ---
+        const topicList = document.getElementById('topic-list');
+        const topicForm = document.getElementById('topic-add-form');
+        const generateNowBtn = document.getElementById('generate-now-btn');
+        const toggleAgentBtn = document.getElementById('toggle-agent-btn');
+        const resetTopicsBtn = document.getElementById('reset-topics-btn');
+
+        // 에이전트 상태 로드
+        async function loadAgentStatus() {
+            try {
+                const res = await fetch('/api/blog/agent-status');
+                const status = await res.json();
+
+                document.getElementById('agent-enabled-status').textContent = status.isEnabled ? '활성화' : '비활성화';
+                document.getElementById('agent-schedule-time').textContent = status.scheduleTime || '설정 안됨';
+                document.getElementById('agent-unused-topics').textContent = `${status.unusedTopicsCount} / ${status.totalTopicsCount}`;
+                document.getElementById('agent-last-run').textContent = status.lastRun 
+                    ? new Date(status.lastRun).toLocaleString('ko-KR') 
+                    : '없음';
+
+                // 버튼 텍스트 업데이트
+                toggleAgentBtn.textContent = status.isEnabled ? '비활성화' : '활성화';
+                toggleAgentBtn.style.backgroundColor = status.isEnabled ? '#f44336' : '#4caf50';
+            } catch (error) {
+                console.error('에이전트 상태 로드 오류:', error);
+            }
+        }
+
+        // 주제 목록 로드
+        async function loadTopics() {
+            try {
+                const res = await fetch('/api/blog/topics');
+                const topics = await res.json();
+                topicList.innerHTML = '';
+
+                if (topics.length === 0) {
+                    topicList.innerHTML = '<p>등록된 주제가 없습니다.</p>';
+                    return;
+                }
+
+                topics.forEach(topic => {
+                    const card = document.createElement('div');
+                    card.className = 'blog-post-card';
+                    card.style.opacity = topic.used ? '0.6' : '1';
+
+                    const usedDate = topic.used_at ? new Date(topic.used_at).toLocaleDateString('ko-KR') : '';
+
+                    card.innerHTML = `
+                        <div class="blog-post-info">
+                            <h3>${topic.topic} ${topic.used ? '✓' : ''}</h3>
+                            <p><strong>키워드:</strong> ${topic.keywords || '없음'}</p>
+                            <p><strong>상태:</strong> ${topic.used ? `사용됨 (${usedDate})` : '미사용'}</p>
+                        </div>
+                        <div class="blog-post-actions">
+                            <button class="delete-btn" data-type="topic" data-id="${topic.id}">삭제</button>
+                        </div>
+                    `;
+                    topicList.appendChild(card);
+                });
+            } catch (error) {
+                console.error('주제 로드 오류:', error);
+            }
+        }
+
+        // 주제 추가
+        topicForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const topic = document.getElementById('topicTitle').value;
+            const keywords = document.getElementById('topicKeywords').value;
+
+            try {
+                const res = await fetch('/api/blog/topics', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, keywords })
+                });
+
+                if (res.ok) {
+                    topicForm.reset();
+                    loadTopics();
+                    loadAgentStatus();
+                    alert('주제가 추가되었습니다.');
+                } else {
+                    alert('주제 추가에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('주제 추가 오류:', error);
+                alert('오류가 발생했습니다.');
+            }
+        });
+
+        // 블로그 즉시 생성
+        generateNowBtn.addEventListener('click', async () => {
+            if (!confirm('블로그 포스트를 지금 생성하시겠습니까? (1-2분 소요)')) return;
+
+            generateNowBtn.innerHTML = '<span class="spinner"></span> 생성 중...';
+            generateNowBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/blog/auto-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    alert(`블로그 포스트가 생성되었습니다!\n제목: ${result.title}`);
+                    loadTopics();
+                    loadAgentStatus();
+                    loadBlogPosts();
+                } else {
+                    alert(`생성 실패: ${result.error || '알 수 없는 오류'}`);
+                }
+            } catch (error) {
+                console.error('블로그 생성 오류:', error);
+                alert('오류가 발생했습니다.');
+            } finally {
+                generateNowBtn.textContent = '지금 생성하기';
+                generateNowBtn.disabled = false;
+            }
+        });
+
+        // 에이전트 활성화/비활성화
+        toggleAgentBtn.addEventListener('click', async () => {
+            try {
+                const currentStatus = await fetch('/api/blog/agent-status').then(r => r.json());
+                const newStatus = !currentStatus.isEnabled;
+
+                const res = await fetch('/api/blog/agent-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isEnabled: newStatus })
+                });
+
+                if (res.ok) {
+                    loadAgentStatus();
+                    alert(`에이전트가 ${newStatus ? '활성화' : '비활성화'}되었습니다.`);
+                } else {
+                    alert('설정 변경에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('설정 변경 오류:', error);
+                alert('오류가 발생했습니다.');
+            }
+        });
+
+        // 주제 리셋
+        resetTopicsBtn.addEventListener('click', async () => {
+            if (!confirm('모든 주제를 미사용 상태로 리셋하시겠습니까?')) return;
+
+            try {
+                const res = await fetch('/api/blog/topics/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    alert(`${result.resetCount}개의 주제가 리셋되었습니다.`);
+                    loadTopics();
+                    loadAgentStatus();
+                } else {
+                    alert('리셋에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('리셋 오류:', error);
+                alert('오류가 발생했습니다.');
+            }
+        });
+
+        // 주제 삭제 (기존 삭제 이벤트 리스너에 추가)
+        document.addEventListener('click', async (e) => {
+            if (e.target.dataset.type === 'topic' && e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                if (!confirm('이 주제를 삭제하시겠습니까?')) return;
+
+                try {
+                    const res = await fetch(`/api/blog/topics/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        loadTopics();
+                        loadAgentStatus();
+                    } else {
+                        alert('삭제에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('삭제 오류:', error);
+                    alert('오류가 발생했습니다.');
+                }
+            }
+        });
+
+        // AI 에이전트 탭 클릭 시 상태 로드
+        document.querySelectorAll('.tab-link').forEach(tab => {
+            tab.addEventListener('click', () => {
+                if (tab.dataset.tab === 'agent-management') {
+                    loadAgentStatus();
+                    loadTopics();
+                }
+            });
         });
     });
     </script>
