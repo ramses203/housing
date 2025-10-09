@@ -21,9 +21,11 @@ cloudinary.config({
 // Neon 데이터베이스 연결
 const sql = neon(process.env.DATABASE_URL);
 
-// 데이터베이스 테이블 초기화
+// 데이터베이스 테이블 초기화 및 마이그레이션
 async function initDatabase() {
   try {
+    console.log('📦 데이터베이스 초기화 시작...');
+    
     // 갤러리 테이블 생성
     await sql`
       CREATE TABLE IF NOT EXISTS gallery (
@@ -74,9 +76,31 @@ async function initDatabase() {
       )
     `;
     
-    console.log('데이터베이스 테이블 초기화 완료');
+    console.log('✅ 테이블 생성 완료');
+    
+    // 마이그레이션: topic_id 컬럼 추가 (기존 테이블용)
+    console.log('🔄 마이그레이션 실행 중...');
+    await sql`
+      DO $$ 
+      BEGIN
+          IF NOT EXISTS (
+              SELECT 1 
+              FROM information_schema.columns 
+              WHERE table_name = 'blog_posts' 
+              AND column_name = 'topic_id'
+          ) THEN
+              ALTER TABLE blog_posts 
+              ADD COLUMN topic_id INTEGER;
+              
+              RAISE NOTICE 'topic_id 컬럼이 추가되었습니다.';
+          END IF;
+      END $$;
+    `;
+    
+    console.log('✅ 데이터베이스 초기화 및 마이그레이션 완료');
   } catch (error) {
-    console.error('데이터베이스 초기화 오류:', error);
+    console.error('❌ 데이터베이스 초기화 오류:', error);
+    throw error;
   }
 }
 
