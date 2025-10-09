@@ -58,6 +58,7 @@ async function initDatabase() {
         thumbnail TEXT,
         author TEXT DEFAULT '새벽하우징',
         topic_id INTEGER,
+        views INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         published INTEGER DEFAULT 1
@@ -95,6 +96,31 @@ async function initDatabase() {
               RAISE NOTICE 'topic_id 컬럼이 추가되었습니다.';
           END IF;
       END $$;
+    `;
+    
+    // 마이그레이션: views 컬럼 추가 (조회수 추적)
+    await sql`
+      DO $$ 
+      BEGIN
+          IF NOT EXISTS (
+              SELECT 1 
+              FROM information_schema.columns 
+              WHERE table_name = 'blog_posts' 
+              AND column_name = 'views'
+          ) THEN
+              ALTER TABLE blog_posts 
+              ADD COLUMN views INTEGER DEFAULT 0;
+              
+              RAISE NOTICE 'views 컬럼이 추가되었습니다.';
+          END IF;
+      END $$;
+    `;
+    
+    // 기존 포스트의 조회수 초기화
+    await sql`
+      UPDATE blog_posts 
+      SET views = 0 
+      WHERE views IS NULL
     `;
     
     console.log('✅ 데이터베이스 초기화 및 마이그레이션 완료');
@@ -243,10 +269,18 @@ app.get('/api/blog/posts', async (req, res) => {
     }
 });
 
-// 특정 블로그 포스트 상세 조회 (공개)
+// 특정 블로그 포스트 상세 조회 (공개) + 조회수 증가
 app.get('/api/blog/posts/:id', async (req, res) => {
     const { id } = req.params;
     try {
+        // 조회수 증가
+        await sql`
+            UPDATE blog_posts 
+            SET views = COALESCE(views, 0) + 1 
+            WHERE id = ${id} AND published = 1
+        `;
+        
+        // 포스트 조회
         const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
         if (rows.length > 0) {
             res.json(rows[0]);

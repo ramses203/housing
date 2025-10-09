@@ -37,6 +37,7 @@
                     <div class="blog-post-meta">
                         <span id="post-author" class="blog-post-author"></span>
                         <span id="post-date" class="blog-post-date"></span>
+                        <span id="post-views" class="blog-post-views"></span>
                     </div>
                 </div>
                 
@@ -94,6 +95,10 @@
                     day: 'numeric'
                 });
                 document.getElementById('post-date').textContent = createdDate;
+                
+                // 조회수 설정
+                const views = post.views || 0;
+                document.getElementById('post-views').textContent = `조회 ${views.toLocaleString('ko-KR')}회`;
 
                 // 썸네일 설정 (있는 경우)
                 if (post.thumbnail) {

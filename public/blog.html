@@ -90,6 +90,9 @@
                         ? `<img src="${post.thumbnail}" alt="${post.title}" class="blog-card-thumbnail">`
                         : `<div class="blog-card-no-thumbnail"><span>📝</span></div>`;
                     
+                    // 조회수 포맷팅
+                    const views = post.views || 0;
+                    
                     card.innerHTML = `
                         <a href="/blog-post.html?id=${post.id}" class="blog-card-link">
                             ${thumbnailHtml}
@@ -99,6 +102,7 @@
                                 <div class="blog-card-meta">
                                     <span class="blog-card-author">${post.author || '새벽하우징'}</span>
                                     <span class="blog-card-date">${createdDate}</span>
+                                    <span class="blog-card-views">조회 ${views.toLocaleString('ko-KR')}회</span>
                                 </div>
                             </div>
                         </a>

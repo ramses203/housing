@@ -563,12 +563,14 @@
                 
                 const contentPreview = post.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...';
                 const createdDate = new Date(post.created_at).toLocaleDateString('ko-KR');
+                const views = post.views || 0;
                 
                 card.innerHTML = `
                     <div class="blog-post-info">
                         <h3>${post.title}</h3>
                         <p>${contentPreview}</p>
                         <p><strong>작성일:</strong> ${createdDate}</p>
+                        <p><strong>조회수:</strong> ${views.toLocaleString('ko-KR')}회</p>
                     </div>
                     <div class="blog-post-actions">
                         <button class="edit-btn" data-id="${post.id}">수정</button>
