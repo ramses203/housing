@@ -19,6 +19,47 @@ function generateDuplicationAvoidancePrompt(previousTitles) {
 }
 
 /**
+ * HTML 콘텐츠를 정리 (불필요한 태그 및 속성 제거)
+ * @param {string} content - HTML 콘텐츠
+ * @returns {string} 정리된 HTML 콘텐츠
+ */
+function sanitizeHtmlContent(content) {
+    if (!content) return '';
+    
+    let cleaned = content;
+    
+    // style 속성 제거
+    cleaned = cleaned.replace(/\s*style\s*=\s*["'][^"']*["']/gi, '');
+    
+    // class 속성 제거
+    cleaned = cleaned.replace(/\s*class\s*=\s*["'][^"']*["']/gi, '');
+    
+    // id 속성 제거
+    cleaned = cleaned.replace(/\s*id\s*=\s*["'][^"']*["']/gi, '');
+    
+    // div 태그를 p 태그로 변환
+    cleaned = cleaned.replace(/<div[^>]*>/gi, '<p>');
+    cleaned = cleaned.replace(/<\/div>/gi, '</p>');
+    
+    // span 태그 제거 (내용은 유지)
+    cleaned = cleaned.replace(/<span[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<\/span>/gi, '');
+    
+    // 연속된 공백 정리
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
+    // 빈 태그 제거
+    cleaned = cleaned.replace(/<p>\s*<\/p>/gi, '');
+    cleaned = cleaned.replace(/<strong>\s*<\/strong>/gi, '');
+    cleaned = cleaned.replace(/<em>\s*<\/em>/gi, '');
+    
+    // 연속된 줄바꿈 정리
+    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n');
+    
+    return cleaned.trim();
+}
+
+/**
  * HTML 콘텐츠에 이미지를 삽입
  * @param {string} content - HTML 콘텐츠
  * @param {Array} images - 이미지 정보 배열
@@ -110,17 +151,19 @@ async function generateBlogPost(topic, previousTitles = [], keywords = null) {
 요구사항:
 1. 흥미롭고 SEO 최적화된 제목을 생성하세요 (40자 이내)
 2. 본문은 2000-3000자 분량으로 작성하세요
-3. HTML 형식으로 작성하세요 (<p>, <h2>, <h3>, <ul>, <li>, <strong>, <em> 태그 사용)
-4. 독자에게 실용적이고 유익한 정보를 제공하세요
-5. 자연스럽고 친근한 어조로 작성하세요
-6. 문단을 적절히 나누어 가독성을 높이세요
-7. 부동산, 황토집, 건축 관련 전문 지식을 활용하세요
+3. HTML 형식으로 작성하되, 깔끔하고 단순한 태그만 사용하세요
+4. 사용 가능한 HTML 태그: <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em>
+5. 불필요한 div, span, style 속성, class 등은 절대 사용하지 마세요
+6. 독자에게 실용적이고 유익한 정보를 제공하세요
+7. 자연스럽고 친근한 어조로 작성하세요
+8. 문단을 적절히 나누어 가독성을 높이세요
+9. 부동산, 황토집, 건축 관련 전문 지식을 활용하세요
 ${duplicationAvoidance}
 
 다음 JSON 형식으로만 응답해주세요:
 {
   "title": "블로그 제목",
-  "content": "HTML 형식의 본문 내용",
+  "content": "HTML 형식의 본문 내용 (p, h2, h3, ul, li, strong, em 태그만 사용)",
   "summary": "100자 이내의 요약"
 }`;
 
@@ -135,12 +178,17 @@ ${duplicationAvoidance}
             // Markdown 코드 블록 제거
             const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             blogData = JSON.parse(jsonText);
+            
+            // HTML 콘텐츠 정리
+            if (blogData.content) {
+                blogData.content = sanitizeHtmlContent(blogData.content);
+            }
         } catch (parseError) {
             console.error('JSON 파싱 오류, 텍스트 그대로 사용:', parseError.message);
             // 파싱 실패시 기본 구조 생성
             blogData = {
                 title: topic,
-                content: `<p>${text.replace(/\n/g, '</p>\n<p>')}</p>`,
+                content: sanitizeHtmlContent(`<p>${text.replace(/\n/g, '</p>\n<p>')}</p>`),
                 summary: text.substring(0, 100)
             };
         }
@@ -261,6 +309,7 @@ module.exports = {
     generateBlogPost,
     createBlogPostFromTopic,
     extractKeywords,
-    insertImagesIntoContent
+    insertImagesIntoContent,
+    sanitizeHtmlContent
 };
 
