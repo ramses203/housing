@@ -147,21 +147,49 @@ ${duplicationAvoidance}
 
         // 이미지 검색 키워드 추출
         const imageKeywords = extractKeywords(topic, keywords);
-        console.log(`이미지 검색 키워드: ${imageKeywords.join(', ')}`);
+        console.log(`📸 이미지 검색 키워드: ${imageKeywords.join(', ')}`);
+
+        // 환경 변수 확인
+        const hasUnsplashKey = !!process.env.UNSPLASH_ACCESS_KEY;
+        const hasPexelsKey = !!process.env.PEXELS_API_KEY;
+        const hasCloudinary = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY);
+        
+        console.log(`🔑 API 키 상태:`, {
+            unsplash: hasUnsplashKey ? '✅' : '❌',
+            pexels: hasPexelsKey ? '✅' : '❌',
+            cloudinary: hasCloudinary ? '✅' : '❌'
+        });
 
         // 이미지 검색 및 업로드 (2-3개)
         const imageCount = Math.min(imageKeywords.length, 3);
         let uploadedImages = [];
 
-        for (let i = 0; i < imageCount; i++) {
-            const keyword = imageKeywords[i];
-            const images = await searchAndUploadImages(keyword, 1);
-            if (images.length > 0) {
-                uploadedImages.push(images[0]);
+        if (!hasUnsplashKey && !hasPexelsKey) {
+            console.warn('⚠️ 이미지 검색 API 키가 설정되지 않았습니다. 이미지 없이 블로그를 생성합니다.');
+        } else if (!hasCloudinary) {
+            console.warn('⚠️ Cloudinary 설정이 없습니다. 이미지 없이 블로그를 생성합니다.');
+        } else {
+            console.log(`🔍 ${imageCount}개의 이미지 검색 시작...`);
+            
+            for (let i = 0; i < imageCount; i++) {
+                const keyword = imageKeywords[i];
+                console.log(`  검색 ${i + 1}/${imageCount}: "${keyword}"`);
+                
+                try {
+                    const images = await searchAndUploadImages(keyword, 1);
+                    if (images.length > 0) {
+                        uploadedImages.push(images[0]);
+                        console.log(`  ✅ 이미지 업로드 성공: ${images[0].url}`);
+                    } else {
+                        console.log(`  ⚠️ "${keyword}" 키워드로 이미지를 찾지 못했습니다.`);
+                    }
+                } catch (error) {
+                    console.error(`  ❌ 이미지 검색/업로드 실패 (${keyword}):`, error.message);
+                }
             }
         }
 
-        console.log(`업로드된 이미지 개수: ${uploadedImages.length}`);
+        console.log(`📊 최종 업로드된 이미지 개수: ${uploadedImages.length}`);
 
         // 콘텐츠에 이미지 삽입
         if (uploadedImages.length > 0) {
