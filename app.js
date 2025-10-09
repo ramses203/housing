@@ -21,6 +21,17 @@ cloudinary.config({
 // Neon 데이터베이스 연결
 const sql = neon(process.env.DATABASE_URL);
 
+// IP 주소 가져오기 헬퍼 함수
+function getClientIp(req) {
+    // Vercel, Cloudflare, Nginx 등의 프록시를 고려한 IP 추출
+    return req.headers['x-forwarded-for']?.split(',')[0].trim() || 
+           req.headers['x-real-ip'] || 
+           req.connection.remoteAddress || 
+           req.socket.remoteAddress ||
+           req.ip || 
+           'unknown';
+}
+
 // 데이터베이스 테이블 초기화 및 마이그레이션
 async function initDatabase() {
   try {
@@ -75,6 +86,28 @@ async function initDatabase() {
         used_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `;
+    
+    // 블로그 포스트 조회 기록 테이블 생성 (IP 기반 중복 방지)
+    await sql`
+      CREATE TABLE IF NOT EXISTS post_views (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL,
+        ip_address VARCHAR(45) NOT NULL,
+        viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(post_id, ip_address)
+      )
+    `;
+    
+    // 인덱스 생성 (조회 성능 향상)
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_post_views_post_id ON post_views(post_id)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_post_views_ip ON post_views(ip_address)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_post_views_viewed_at ON post_views(viewed_at)
     `;
     
     console.log('✅ 테이블 생성 완료');
@@ -269,23 +302,47 @@ app.get('/api/blog/posts', async (req, res) => {
     }
 });
 
-// 특정 블로그 포스트 상세 조회 (공개) + 조회수 증가
+// 특정 블로그 포스트 상세 조회 (공개) + 조회수 증가 (IP 기반 중복 방지)
 app.get('/api/blog/posts/:id', async (req, res) => {
     const { id } = req.params;
+    const clientIp = getClientIp(req);
+    
     try {
-        // 조회수 증가
-        await sql`
-            UPDATE blog_posts 
-            SET views = COALESCE(views, 0) + 1 
-            WHERE id = ${id} AND published = 1
-        `;
-        
         // 포스트 조회
         const rows = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
-        if (rows.length > 0) {
+        if (rows.length === 0) {
+            return res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
+        }
+        
+        // IP 기반 조회 기록 확인 및 추가 (중복 방지)
+        try {
+            // INSERT ... ON CONFLICT DO NOTHING을 사용하여 중복 방지
+            const viewResult = await sql`
+                INSERT INTO post_views (post_id, ip_address)
+                VALUES (${id}, ${clientIp})
+                ON CONFLICT (post_id, ip_address) DO NOTHING
+                RETURNING id
+            `;
+            
+            // 새로운 조회 기록이 추가된 경우에만 조회수 증가
+            if (viewResult.length > 0) {
+                await sql`
+                    UPDATE blog_posts 
+                    SET views = COALESCE(views, 0) + 1 
+                    WHERE id = ${id}
+                `;
+                
+                // 업데이트된 조회수를 다시 조회
+                const updatedRows = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
+                res.json(updatedRows[0]);
+            } else {
+                // 이미 조회한 IP인 경우 기존 데이터 반환
+                res.json(rows[0]);
+            }
+        } catch (viewError) {
+            console.error('조회 기록 저장 오류:', viewError);
+            // 조회 기록 저장 실패해도 포스트는 반환
             res.json(rows[0]);
-        } else {
-            res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
         }
     } catch (error) {
         console.error('블로그 포스트 조회 오류:', error);
