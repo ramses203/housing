@@ -501,6 +501,7 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
 app.get('/api/blog/topics', authMiddleware, async (req, res) => {
     try {
         const topics = await sql`SELECT * FROM blog_topics ORDER BY created_at DESC`;
+        console.log('주제 목록 조회 결과:', JSON.stringify(topics, null, 2));
         res.json(topics);
     } catch (error) {
         console.error('주제 조회 오류:', error);
@@ -552,14 +553,23 @@ app.delete('/api/blog/topics/:id', authMiddleware, async (req, res) => {
         
         // 삭제 실행
         const result = await sql`DELETE FROM blog_topics WHERE id = ${id}`;
-        console.log('삭제 결과:', result);
+        console.log('삭제 결과 전체:', JSON.stringify(result, null, 2));
+        console.log('삭제 결과 rowCount:', result.rowCount, 'count:', result.count);
         
         if (result.rowCount > 0) {
             console.log('주제 삭제 완료:', id);
             res.json({ success: true });
         } else {
             console.log('삭제 실패 (rowCount 0):', id);
-            res.status(500).json({ error: '삭제에 실패했습니다.' });
+            console.log('기존 주제 정보:', existingTopic[0]);
+            res.status(500).json({ 
+                error: '삭제에 실패했습니다.', 
+                debug: {
+                    id: id,
+                    existingTopic: existingTopic[0],
+                    rowCount: result.rowCount
+                }
+            });
         }
     } catch (error) {
         console.error('주제 삭제 오류 상세:', error);
