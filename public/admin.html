@@ -806,6 +806,7 @@
             try {
                 const res = await fetch('/api/blog/topics');
                 const topics = await res.json();
+                console.log('불러온 주제 목록:', topics);
                 topicList.innerHTML = '';
 
                 if (topics.length === 0) {
@@ -814,6 +815,7 @@
                 }
 
                 topics.forEach(topic => {
+                    console.log('주제 렌더링:', topic.id, topic.topic);
                     const card = document.createElement('div');
                     card.className = 'blog-post-card';
                     card.style.opacity = topic.used ? '0.6' : '1';
@@ -822,7 +824,7 @@
 
                     card.innerHTML = `
                         <div class="blog-post-info">
-                            <h3>${topic.topic} ${topic.used ? '✓' : ''}</h3>
+                            <h3>${topic.topic} ${topic.used ? '✓' : ''} (ID: ${topic.id})</h3>
                             <p><strong>키워드:</strong> ${topic.keywords || '없음'}</p>
                             <p><strong>상태:</strong> ${topic.used ? `사용됨 (${usedDate})` : '미사용'}</p>
                         </div>
@@ -902,11 +904,17 @@
         document.addEventListener('click', async (e) => {
             if (e.target.dataset.type === 'topic' && e.target.classList.contains('delete-btn')) {
                 const id = e.target.dataset.id;
+                console.log('삭제 버튼 클릭 - ID:', id, 'Type:', typeof id);
+                
                 if (!confirm('이 주제를 삭제하시겠습니까?')) return;
 
                 try {
+                    console.log('삭제 요청 전송:', `/api/blog/topics/${id}`);
                     const res = await fetch(`/api/blog/topics/${id}`, { method: 'DELETE' });
+                    console.log('응답 상태:', res.status, res.statusText);
+                    
                     if (res.ok) {
+                        console.log('삭제 성공!');
                         loadTopics();
                         loadAgentStatus();
                     } else {
