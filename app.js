@@ -537,7 +537,7 @@ app.delete('/api/blog/topics/:id', authMiddleware, async (req, res) => {
     try {
         const result = await sql`DELETE FROM blog_topics WHERE id = ${id}`;
         
-        if (result.count > 0) {
+        if (result.rowCount > 0) {
             console.log('주제 삭제 완료:', id);
             res.json({ success: true });
         } else {
