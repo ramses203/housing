@@ -280,7 +280,8 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                        <button id="generate-now-btn" style="width: 100%; background-color: #4caf50;">지금 생성하기</button>
+                        <button id="toggle-agent-btn" style="width: 50%;">활성화</button>
+                        <button id="generate-now-btn" style="width: 50%; background-color: #4caf50;">지금 생성하기</button>
                     </div>
                 </div>
 
@@ -783,6 +784,7 @@
         const topicList = document.getElementById('topic-list');
         const topicForm = document.getElementById('topic-add-form');
         const generateNowBtn = document.getElementById('generate-now-btn');
+        const toggleAgentBtn = document.getElementById('toggle-agent-btn');
 
         // 에이전트 상태 로드
         async function loadAgentStatus() {
@@ -790,12 +792,18 @@
                 const res = await fetch('/api/blog/agent-status');
                 const status = await res.json();
 
-                document.getElementById('agent-enabled-status').textContent = status.isEnabled ? '활성화' : '비활성화';
+                const isEnabled = status.isEnabled;
+                document.getElementById('agent-enabled-status').textContent = isEnabled ? '활성화' : '비활성화';
+                document.getElementById('agent-enabled-status').style.color = isEnabled ? '#4caf50' : '#999';
                 document.getElementById('agent-schedule-time').textContent = status.scheduleTime || '설정 안됨';
                 document.getElementById('agent-unused-topics').textContent = `${status.unusedTopicsCount} / ${status.totalTopicsCount}`;
                 document.getElementById('agent-last-run').textContent = status.lastRun 
                     ? new Date(status.lastRun).toLocaleString('ko-KR') 
                     : '없음';
+
+                // 버튼 상태 업데이트
+                toggleAgentBtn.textContent = isEnabled ? '비활성화' : '활성화';
+                toggleAgentBtn.style.backgroundColor = isEnabled ? '#f44336' : '#2196f3';
             } catch (error) {
                 console.error('에이전트 상태 로드 오류:', error);
             }
@@ -863,6 +871,40 @@
             } catch (error) {
                 console.error('주제 추가 오류:', error);
                 alert('오류가 발생했습니다.');
+            }
+        });
+
+        // 에이전트 활성화/비활성화 토글
+        toggleAgentBtn.addEventListener('click', async () => {
+            const res = await fetch('/api/blog/agent-status');
+            const status = await res.json();
+            const isCurrentlyEnabled = status.isEnabled;
+            
+            const action = isCurrentlyEnabled ? '비활성화' : '활성화';
+            if (!confirm(`에이전트를 ${action}하시겠습니까?`)) return;
+
+            toggleAgentBtn.disabled = true;
+            toggleAgentBtn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const updateRes = await fetch('/api/blog/agent-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isEnabled: !isCurrentlyEnabled })
+                });
+
+                if (updateRes.ok) {
+                    await loadAgentStatus();
+                    alert(`에이전트가 ${action}되었습니다.`);
+                } else {
+                    alert(`${action} 실패: 서버 오류`);
+                }
+            } catch (error) {
+                console.error('에이전트 상태 변경 오류:', error);
+                alert('오류가 발생했습니다.');
+            } finally {
+                toggleAgentBtn.disabled = false;
+                await loadAgentStatus(); // 버튼 텍스트 복원
             }
         });
 

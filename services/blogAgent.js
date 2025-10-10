@@ -60,7 +60,120 @@ function sanitizeHtmlContent(content) {
 }
 
 /**
- * HTML 콘텐츠에 이미지를 삽입
+ * Gemini AI로 문단별 적절한 이미지 키워드 추천
+ * @param {string} content - HTML 콘텐츠
+ * @param {string} topic - 블로그 주제
+ * @returns {Promise<Array>} 이미지 키워드 배열 [{position, keyword, description}]
+ */
+async function suggestImageKeywordsForContent(content, topic) {
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        
+        // HTML 태그 제거하고 순수 텍스트만 추출
+        const textContent = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        const prompt = `다음은 "${topic}"에 관한 블로그 포스트입니다.
+
+블로그 내용:
+${textContent}
+
+이 블로그의 내용을 읽고, 중간중간에 삽입하면 좋을 이미지를 3-4개 추천해주세요.
+각 이미지는 특정 문단의 내용과 잘 어울려야 하며, 실제로 검색 가능한 구체적인 키워드를 제공해주세요.
+
+다음 JSON 형식으로만 응답해주세요:
+{
+  "suggestions": [
+    {
+      "keyword": "영어 검색 키워드 (예: modern house architecture)",
+      "description": "어떤 문단 내용과 어울리는지 간단한 설명",
+      "relatedText": "해당 이미지와 관련된 본문의 핵심 문구 (10-20자)"
+    }
+  ]
+}
+
+주의사항:
+- keyword는 영어로 작성 (이미지 검색용)
+- 각 이미지는 서로 다른 내용을 보완해야 함
+- 3-4개만 추천 (너무 많으면 산만함)
+- 부동산, 건축, 주거 관련 이미지 위주로`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        // JSON 파싱
+        const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const data = JSON.parse(jsonText);
+
+        return data.suggestions || [];
+    } catch (error) {
+        console.error('❌ AI 이미지 추천 오류:', error.message);
+        return [];
+    }
+}
+
+/**
+ * HTML 콘텐츠에 문맥에 맞는 이미지를 삽입
+ * @param {string} content - HTML 콘텐츠
+ * @param {Array} imageSuggestions - AI가 추천한 이미지 정보
+ * @param {Array} uploadedImages - 업로드된 이미지 정보 배열
+ * @returns {string} 이미지가 삽입된 HTML 콘텐츠
+ */
+function insertContextualImagesIntoContent(content, imageSuggestions, uploadedImages) {
+    if (!uploadedImages || uploadedImages.length === 0) {
+        return content;
+    }
+
+    let result = content;
+    
+    // 각 추천 이미지를 해당 문맥에 맞게 삽입
+    imageSuggestions.forEach((suggestion, idx) => {
+        if (idx >= uploadedImages.length) return;
+        
+        const img = uploadedImages[idx];
+        const imageHtml = `
+
+<figure style="margin: 2rem 0; text-align: center;">
+    <img src="${img.url}" alt="${suggestion.description || img.description || '블로그 이미지'}" style="max-width: 100%; height: auto; border-radius: 8px;">
+    <figcaption style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">${suggestion.description || ''}</figcaption>
+</figure>
+
+`;
+
+        // 관련 텍스트 찾아서 그 뒤에 이미지 삽입
+        if (suggestion.relatedText) {
+            // HTML 태그를 고려하여 관련 텍스트 찾기
+            const searchText = suggestion.relatedText.trim();
+            const searchIndex = result.indexOf(searchText);
+            
+            if (searchIndex !== -1) {
+                // 관련 텍스트 이후 첫 번째 </p> 태그 뒤에 삽입
+                const afterText = result.substring(searchIndex);
+                const closingPIndex = afterText.indexOf('</p>');
+                
+                if (closingPIndex !== -1) {
+                    const insertPosition = searchIndex + closingPIndex + 4; // </p> 길이만큼 더함
+                    result = result.substring(0, insertPosition) + imageHtml + result.substring(insertPosition);
+                    return;
+                }
+            }
+        }
+        
+        // 관련 텍스트를 못 찾았다면 균등하게 배치
+        const paragraphs = result.split('</p>');
+        const position = Math.floor((paragraphs.length / (imageSuggestions.length + 1)) * (idx + 1));
+        
+        if (position < paragraphs.length) {
+            paragraphs[position] += '</p>' + imageHtml;
+            result = paragraphs.join('</p>');
+        }
+    });
+
+    return result;
+}
+
+/**
+ * HTML 콘텐츠에 이미지를 삽입 (레거시 함수 - 하위 호환성 유지)
  * @param {string} content - HTML 콘텐츠
  * @param {Array} images - 이미지 정보 배열
  * @returns {string} 이미지가 삽입된 HTML 콘텐츠
@@ -193,10 +306,6 @@ ${duplicationAvoidance}
             };
         }
 
-        // 이미지 검색 키워드 추출
-        const imageKeywords = extractKeywords(topic, keywords);
-        console.log(`📸 이미지 검색 키워드: ${imageKeywords.join(', ')}`);
-
         // 환경 변수 확인
         const hasUnsplashKey = !!process.env.UNSPLASH_ACCESS_KEY;
         const hasPexelsKey = !!process.env.PEXELS_API_KEY;
@@ -208,32 +317,62 @@ ${duplicationAvoidance}
             cloudinary: hasCloudinary ? '✅' : '❌'
         });
 
-        // 이미지 검색 및 업로드 (2-3개)
-        const imageCount = Math.min(imageKeywords.length, 3);
         let uploadedImages = [];
+        let imageSuggestions = [];
 
-        if (!hasUnsplashKey && !hasPexelsKey) {
-            console.warn('⚠️ 이미지 검색 API 키가 설정되지 않았습니다. 이미지 없이 블로그를 생성합니다.');
-        } else if (!hasCloudinary) {
-            console.warn('⚠️ Cloudinary 설정이 없습니다. 이미지 없이 블로그를 생성합니다.');
-        } else {
-            console.log(`🔍 ${imageCount}개의 이미지 검색 시작...`);
+        // API 키가 모두 설정되어 있으면 AI 기반 이미지 추천 사용
+        if ((hasUnsplashKey || hasPexelsKey) && hasCloudinary) {
+            console.log('🤖 AI가 블로그 내용을 분석하여 적절한 이미지 추천 중...');
             
-            for (let i = 0; i < imageCount; i++) {
-                const keyword = imageKeywords[i];
-                console.log(`  검색 ${i + 1}/${imageCount}: "${keyword}"`);
-                
-                try {
-                    const images = await searchAndUploadImages(keyword, 1);
-                    if (images.length > 0) {
-                        uploadedImages.push(images[0]);
-                        console.log(`  ✅ 이미지 업로드 성공: ${images[0].url}`);
-                    } else {
-                        console.log(`  ⚠️ "${keyword}" 키워드로 이미지를 찾지 못했습니다.`);
+            // AI가 콘텐츠를 분석하여 이미지 키워드 추천
+            imageSuggestions = await suggestImageKeywordsForContent(blogData.content, topic);
+            
+            if (imageSuggestions.length > 0) {
+                console.log(`📸 AI 추천 이미지: ${imageSuggestions.length}개`);
+                imageSuggestions.forEach((suggestion, idx) => {
+                    console.log(`  ${idx + 1}. "${suggestion.keyword}" - ${suggestion.description}`);
+                });
+
+                // 추천된 키워드로 이미지 검색 및 업로드
+                for (let i = 0; i < imageSuggestions.length; i++) {
+                    const suggestion = imageSuggestions[i];
+                    console.log(`  🔍 검색 ${i + 1}/${imageSuggestions.length}: "${suggestion.keyword}"`);
+                    
+                    try {
+                        const images = await searchAndUploadImages(suggestion.keyword, 1);
+                        if (images.length > 0) {
+                            uploadedImages.push(images[0]);
+                            console.log(`  ✅ 이미지 업로드 성공`);
+                        } else {
+                            console.log(`  ⚠️ 이미지를 찾지 못했습니다.`);
+                        }
+                    } catch (error) {
+                        console.error(`  ❌ 이미지 검색/업로드 실패:`, error.message);
                     }
-                } catch (error) {
-                    console.error(`  ❌ 이미지 검색/업로드 실패 (${keyword}):`, error.message);
                 }
+            } else {
+                console.warn('⚠️ AI 이미지 추천 실패, 기본 키워드로 대체합니다.');
+                
+                // 기본 키워드 추출 방식으로 대체
+                const imageKeywords = extractKeywords(topic, keywords);
+                console.log(`📸 기본 키워드: ${imageKeywords.join(', ')}`);
+                
+                for (let i = 0; i < Math.min(imageKeywords.length, 3); i++) {
+                    try {
+                        const images = await searchAndUploadImages(imageKeywords[i], 1);
+                        if (images.length > 0) {
+                            uploadedImages.push(images[0]);
+                        }
+                    } catch (error) {
+                        console.error(`  ❌ 이미지 검색 실패:`, error.message);
+                    }
+                }
+            }
+        } else {
+            if (!hasUnsplashKey && !hasPexelsKey) {
+                console.warn('⚠️ 이미지 검색 API 키가 설정되지 않았습니다. 이미지 없이 블로그를 생성합니다.');
+            } else if (!hasCloudinary) {
+                console.warn('⚠️ Cloudinary 설정이 없습니다. 이미지 없이 블로그를 생성합니다.');
             }
         }
 
@@ -241,7 +380,15 @@ ${duplicationAvoidance}
 
         // 콘텐츠에 이미지 삽입
         if (uploadedImages.length > 0) {
-            blogData.content = insertImagesIntoContent(blogData.content, uploadedImages);
+            if (imageSuggestions.length > 0) {
+                // AI 추천 기반으로 문맥에 맞게 삽입
+                console.log('✨ 문맥에 맞는 위치에 이미지 삽입 중...');
+                blogData.content = insertContextualImagesIntoContent(blogData.content, imageSuggestions, uploadedImages);
+            } else {
+                // 기존 방식으로 균등하게 삽입
+                console.log('📍 균등하게 이미지 배치 중...');
+                blogData.content = insertImagesIntoContent(blogData.content, uploadedImages);
+            }
         }
 
         // 썸네일 설정 (첫 번째 이미지)
@@ -310,6 +457,8 @@ module.exports = {
     createBlogPostFromTopic,
     extractKeywords,
     insertImagesIntoContent,
+    insertContextualImagesIntoContent,
+    suggestImageKeywordsForContent,
     sanitizeHtmlContent
 };
 

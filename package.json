@@ -7,6 +7,8 @@
     "start": "node app.js",
     "migrate": "node migrations/migrate.js",
     "check-env": "node scripts/check-env.js",
+    "topics": "node scripts/check-blog-topics.js",
+    "topics:import": "node scripts/import-initial-topics.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
