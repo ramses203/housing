@@ -282,7 +282,6 @@
                     <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                         <button id="generate-now-btn" style="flex: 1; background-color: #4caf50;">지금 생성하기</button>
                         <button id="toggle-agent-btn" style="flex: 1;">활성화/비활성화</button>
-                        <button id="reset-topics-btn" style="flex: 1; background-color: #ff9800;">주제 리셋</button>
                     </div>
                 </div>
 
@@ -786,7 +785,6 @@
         const topicForm = document.getElementById('topic-add-form');
         const generateNowBtn = document.getElementById('generate-now-btn');
         const toggleAgentBtn = document.getElementById('toggle-agent-btn');
-        const resetTopicsBtn = document.getElementById('reset-topics-btn');
 
         // 에이전트 상태 로드
         async function loadAgentStatus() {
@@ -928,30 +926,6 @@
             }
         });
 
-        // 주제 리셋
-        resetTopicsBtn.addEventListener('click', async () => {
-            if (!confirm('모든 주제를 미사용 상태로 리셋하시겠습니까?')) return;
-
-            try {
-                const res = await fetch('/api/blog/topics/reset', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await res.json();
-
-                if (result.success) {
-                    alert(`${result.resetCount}개의 주제가 리셋되었습니다.`);
-                    loadTopics();
-                    loadAgentStatus();
-                } else {
-                    alert('리셋에 실패했습니다.');
-                }
-            } catch (error) {
-                console.error('리셋 오류:', error);
-                alert('오류가 발생했습니다.');
-            }
-        });
 
         // 주제 삭제 (기존 삭제 이벤트 리스너에 추가)
         document.addEventListener('click', async (e) => {
