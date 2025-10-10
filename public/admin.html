@@ -280,8 +280,7 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                        <button id="generate-now-btn" style="flex: 1; background-color: #4caf50;">지금 생성하기</button>
-                        <button id="toggle-agent-btn" style="flex: 1;">활성화/비활성화</button>
+                        <button id="generate-now-btn" style="width: 100%; background-color: #4caf50;">지금 생성하기</button>
                     </div>
                 </div>
 
@@ -784,7 +783,6 @@
         const topicList = document.getElementById('topic-list');
         const topicForm = document.getElementById('topic-add-form');
         const generateNowBtn = document.getElementById('generate-now-btn');
-        const toggleAgentBtn = document.getElementById('toggle-agent-btn');
 
         // 에이전트 상태 로드
         async function loadAgentStatus() {
@@ -798,10 +796,6 @@
                 document.getElementById('agent-last-run').textContent = status.lastRun 
                     ? new Date(status.lastRun).toLocaleString('ko-KR') 
                     : '없음';
-
-                // 버튼 텍스트 업데이트
-                toggleAgentBtn.textContent = status.isEnabled ? '비활성화' : '활성화';
-                toggleAgentBtn.style.backgroundColor = status.isEnabled ? '#f44336' : '#4caf50';
             } catch (error) {
                 console.error('에이전트 상태 로드 오류:', error);
             }
@@ -902,29 +896,6 @@
             }
         });
 
-        // 에이전트 활성화/비활성화
-        toggleAgentBtn.addEventListener('click', async () => {
-            try {
-                const currentStatus = await fetch('/api/blog/agent-status').then(r => r.json());
-                const newStatus = !currentStatus.isEnabled;
-
-                const res = await fetch('/api/blog/agent-config', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ isEnabled: newStatus })
-                });
-
-                if (res.ok) {
-                    loadAgentStatus();
-                    alert(`에이전트가 ${newStatus ? '활성화' : '비활성화'}되었습니다.`);
-                } else {
-                    alert('설정 변경에 실패했습니다.');
-                }
-            } catch (error) {
-                console.error('설정 변경 오류:', error);
-                alert('오류가 발생했습니다.');
-            }
-        });
 
 
         // 주제 삭제 (기존 삭제 이벤트 리스너에 추가)
