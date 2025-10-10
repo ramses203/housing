@@ -532,10 +532,25 @@ app.post('/api/blog/topics', authMiddleware, async (req, res) => {
 
 // 주제 삭제
 app.delete('/api/blog/topics/:id', authMiddleware, async (req, res) => {
-    const { id } = req.params;
+    const id = parseInt(req.params.id, 10);
     
     try {
-        console.log('주제 삭제 시도:', id);
+        console.log('주제 삭제 시도:', id, typeof id);
+        
+        // ID 유효성 검사
+        if (isNaN(id)) {
+            return res.status(400).json({ error: '유효하지 않은 ID입니다.' });
+        }
+        
+        // 먼저 주제가 존재하는지 확인
+        const existingTopic = await sql`SELECT * FROM blog_topics WHERE id = ${id}`;
+        console.log('기존 주제 조회 결과:', existingTopic);
+        
+        if (existingTopic.length === 0) {
+            return res.status(404).json({ error: '주제를 찾을 수 없습니다.' });
+        }
+        
+        // 삭제 실행
         const result = await sql`DELETE FROM blog_topics WHERE id = ${id}`;
         console.log('삭제 결과:', result);
         
@@ -543,8 +558,8 @@ app.delete('/api/blog/topics/:id', authMiddleware, async (req, res) => {
             console.log('주제 삭제 완료:', id);
             res.json({ success: true });
         } else {
-            console.log('주제를 찾을 수 없음:', id);
-            res.status(404).json({ error: '주제를 찾을 수 없습니다.' });
+            console.log('삭제 실패 (rowCount 0):', id);
+            res.status(500).json({ error: '삭제에 실패했습니다.' });
         }
     } catch (error) {
         console.error('주제 삭제 오류 상세:', error);
