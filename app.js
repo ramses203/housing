@@ -535,17 +535,20 @@ app.delete('/api/blog/topics/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     
     try {
+        console.log('주제 삭제 시도:', id);
         const result = await sql`DELETE FROM blog_topics WHERE id = ${id}`;
+        console.log('삭제 결과:', result);
         
         if (result.rowCount > 0) {
             console.log('주제 삭제 완료:', id);
             res.json({ success: true });
         } else {
+            console.log('주제를 찾을 수 없음:', id);
             res.status(404).json({ error: '주제를 찾을 수 없습니다.' });
         }
     } catch (error) {
-        console.error('주제 삭제 오류:', error);
-        res.status(500).json({ error: 'Failed to delete topic.' });
+        console.error('주제 삭제 오류 상세:', error);
+        res.status(500).json({ error: 'Failed to delete topic.', details: error.message });
     }
 });
 
