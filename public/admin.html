@@ -279,6 +279,16 @@
                             <p id="agent-last-run" style="margin: 0.25rem 0; font-weight: bold;"></p>
                         </div>
                     </div>
+                    
+                    <!-- 실행 시간 설정 -->
+                    <div style="margin-bottom: 1rem;">
+                        <label for="schedule-time-input" style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #666;">실행 시간 설정 (24시간 형식)</label>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <input type="time" id="schedule-time-input" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1;" value="09:00">
+                            <button id="update-schedule-btn" style="width: auto; padding: 0.5rem 1rem; background-color: #2196f3;">시간 변경</button>
+                        </div>
+                    </div>
+                    
                     <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                         <button id="toggle-agent-btn" style="width: 50%;">활성화</button>
                         <button id="generate-now-btn" style="width: 50%; background-color: #4caf50;">지금 생성하기</button>
@@ -785,6 +795,8 @@
         const topicForm = document.getElementById('topic-add-form');
         const generateNowBtn = document.getElementById('generate-now-btn');
         const toggleAgentBtn = document.getElementById('toggle-agent-btn');
+        const updateScheduleBtn = document.getElementById('update-schedule-btn');
+        const scheduleTimeInput = document.getElementById('schedule-time-input');
 
         // 에이전트 상태 로드
         async function loadAgentStatus() {
@@ -800,6 +812,11 @@
                 document.getElementById('agent-last-run').textContent = status.lastRun 
                     ? new Date(status.lastRun).toLocaleString('ko-KR') 
                     : '없음';
+
+                // 시간 입력 필드 업데이트
+                if (status.scheduleTime) {
+                    scheduleTimeInput.value = status.scheduleTime;
+                }
 
                 // 버튼 상태 업데이트
                 toggleAgentBtn.textContent = isEnabled ? '비활성화' : '활성화';
@@ -871,6 +888,43 @@
             } catch (error) {
                 console.error('주제 추가 오류:', error);
                 alert('오류가 발생했습니다.');
+            }
+        });
+
+        // 실행 시간 변경
+        updateScheduleBtn.addEventListener('click', async () => {
+            const newTime = scheduleTimeInput.value;
+            
+            if (!newTime) {
+                alert('시간을 선택해주세요.');
+                return;
+            }
+
+            if (!confirm(`실행 시간을 ${newTime}로 변경하시겠습니까?`)) return;
+
+            updateScheduleBtn.disabled = true;
+            const originalText = updateScheduleBtn.textContent;
+            updateScheduleBtn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const res = await fetch('/api/blog/agent-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scheduleTime: newTime })
+                });
+
+                if (res.ok) {
+                    await loadAgentStatus();
+                    alert(`실행 시간이 ${newTime}로 변경되었습니다.`);
+                } else {
+                    alert('시간 변경에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('시간 변경 오류:', error);
+                alert('오류가 발생했습니다.');
+            } finally {
+                updateScheduleBtn.textContent = originalText;
+                updateScheduleBtn.disabled = false;
             }
         });
 
