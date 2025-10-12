@@ -1,0 +1,28 @@
+name: Blog Auto Generate
+
+on:
+  schedule:
+    # 매시간 00분에 실행 (UTC 시간)
+    - cron: '0 * * * *'
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  generate-blog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Blog Generate API
+        run: |
+          echo "블로그 자동 생성 Cron 실행: $(date)"
+          response=$(curl -s -w "\n%{http_code}" -X GET "https://dawn-housing.vercel.app/api/cron/blog-auto-generate")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ 블로그 생성 API 호출 성공"
+          else
+            echo "⚠️ 블로그 생성 API 호출 완료 (상태: $http_code)"
+          fi
+

@@ -1,6 +1,24 @@
 # 블로그 자동 생성 Cron 설정 가이드
 
-Vercel 무료 플랜에서는 내장 Cron을 사용할 수 없으므로, 외부 무료 Cron 서비스를 사용합니다.
+이 프로젝트는 **GitHub Actions**를 사용하여 매시간 블로그 자동 생성을 실행합니다.
+
+## 현재 설정 (GitHub Actions) ✅
+
+`.github/workflows/blog-cron.yml` 파일이 이미 설정되어 있습니다:
+- **실행 주기**: 매시간 00분 (UTC 기준)
+- **작동 방식**: 
+  1. 매시간 `/api/cron/blog-auto-generate` API 호출
+  2. 서버에서 현재 시간과 관리자 페이지 설정 시간 비교
+  3. 일치하면 블로그 자동 생성
+  4. 하루에 한 번만 실행되도록 중복 방지
+
+## 확인 방법
+
+GitHub Repository → Actions 탭에서 워크플로우 실행 상태 확인 가능
+
+## 대안: 외부 Cron 서비스
+
+GitHub Actions 외에도 다음 서비스들을 사용할 수 있습니다:
 
 ## 방법 1: cron-job.org (추천)
 
