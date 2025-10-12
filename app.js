@@ -99,6 +99,27 @@ async function initDatabase() {
       )
     `;
     
+    // 블로그 에이전트 설정 테이블 생성
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_config (
+        id SERIAL PRIMARY KEY,
+        is_enabled BOOLEAN DEFAULT TRUE,
+        schedule_time VARCHAR(5) DEFAULT '09:00',
+        last_run TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
+    // 기본 설정이 없으면 추가
+    const configCount = await sql`SELECT COUNT(*) as count FROM agent_config`;
+    if (parseInt(configCount[0].count) === 0) {
+      await sql`
+        INSERT INTO agent_config (is_enabled, schedule_time)
+        VALUES (true, '09:00')
+      `;
+      console.log('✅ 에이전트 기본 설정 생성 완료');
+    }
+    
     // 인덱스 생성 (조회 성능 향상)
     await sql`
       CREATE INDEX IF NOT EXISTS idx_post_views_post_id ON post_views(post_id)
@@ -598,19 +619,118 @@ app.post('/api/blog/auto-generate', authMiddleware, async (req, res) => {
     }
 });
 
+// Vercel Cron을 위한 엔드포인트 (매시간 실행, 설정된 시간에만 블로그 생성)
+app.get('/api/cron/blog-auto-generate', async (req, res) => {
+    // Vercel Cron의 요청인지 확인
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // 프로덕션에서는 CRON_SECRET 검증
+    if (process.env.NODE_ENV === 'production' && cronSecret) {
+        if (authHeader !== `Bearer ${cronSecret}`) {
+            console.log('권한 없는 Cron 요청 차단');
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    }
+    
+    try {
+        // 현재 시간 (한국 시간)
+        const now = new Date();
+        const koreaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+        const currentHour = koreaTime.getHours();
+        const currentMinute = koreaTime.getMinutes();
+        const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+        
+        console.log('[Vercel Cron] 체크 시간:', currentTime);
+        
+        // 데이터베이스에서 설정 가져오기
+        const config = await sql`SELECT * FROM agent_config ORDER BY id DESC LIMIT 1`;
+        
+        if (config.length === 0) {
+            console.log('[Vercel Cron] 설정이 없습니다.');
+            return res.json({ success: false, message: '설정이 없습니다.' });
+        }
+        
+        const { is_enabled, schedule_time, last_run } = config[0];
+        
+        console.log('[Vercel Cron] 설정:', { is_enabled, schedule_time, last_run });
+        
+        // 비활성화 상태면 실행하지 않음
+        if (!is_enabled) {
+            console.log('[Vercel Cron] 에이전트가 비활성화되어 있습니다.');
+            return res.json({ success: false, message: '에이전트 비활성화 상태' });
+        }
+        
+        // 설정된 시간의 시간 부분만 비교 (분은 무시)
+        const [scheduleHour] = schedule_time.split(':');
+        
+        // 설정된 시간이 아니면 실행하지 않음
+        if (currentHour !== parseInt(scheduleHour)) {
+            console.log(`[Vercel Cron] 실행 시간이 아닙니다. (현재: ${currentTime}, 설정: ${schedule_time})`);
+            return res.json({ success: false, message: '실행 시간 아님', currentTime, scheduleTime: schedule_time });
+        }
+        
+        // 오늘 이미 실행했는지 확인
+        if (last_run) {
+            const lastRunDate = new Date(last_run);
+            const lastRunKorea = new Date(lastRunDate.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+            const today = koreaTime.toDateString();
+            const lastRunDay = lastRunKorea.toDateString();
+            
+            if (today === lastRunDay) {
+                console.log('[Vercel Cron] 오늘 이미 실행했습니다:', lastRunDate);
+                return res.json({ success: false, message: '오늘 이미 실행됨', lastRun: last_run });
+            }
+        }
+        
+        // 블로그 생성 실행
+        console.log('[Vercel Cron] 블로그 자동 생성 시작:', currentTime);
+        const result = await runBlogGeneration(sql);
+        
+        // 마지막 실행 시간 업데이트
+        await sql`
+            UPDATE agent_config 
+            SET last_run = CURRENT_TIMESTAMP 
+            WHERE id = ${config[0].id}
+        `;
+        
+        console.log('[Vercel Cron] 블로그 자동 생성 완료:', result);
+        res.json({ success: true, result, executedAt: currentTime });
+    } catch (error) {
+        console.error('[Vercel Cron] 블로그 자동 생성 오류:', error);
+        res.status(500).json({ error: 'Failed to generate blog post.', details: error.message });
+    }
+});
+
 // 에이전트 상태 조회
 app.get('/api/blog/agent-status', authMiddleware, async (req, res) => {
     try {
-        const status = getSchedulerStatus();
+        // 데이터베이스에서 설정 가져오기
+        const config = await sql`SELECT * FROM agent_config ORDER BY id DESC LIMIT 1`;
+        
+        let agentConfig = {
+            isEnabled: true,
+            scheduleTime: '09:00',
+            lastRun: null
+        };
+        
+        if (config.length > 0) {
+            agentConfig = {
+                isEnabled: config[0].is_enabled,
+                scheduleTime: config[0].schedule_time,
+                lastRun: config[0].last_run
+            };
+        }
         
         // 미사용 주제 개수 조회
         const unusedTopics = await sql`SELECT COUNT(*) as count FROM blog_topics WHERE used = FALSE`;
         const totalTopics = await sql`SELECT COUNT(*) as count FROM blog_topics`;
         
         res.json({
-            ...status,
+            ...agentConfig,
             unusedTopicsCount: parseInt(unusedTopics[0].count),
-            totalTopicsCount: parseInt(totalTopics[0].count)
+            totalTopicsCount: parseInt(totalTopics[0].count),
+            isScheduled: true // Vercel Cron이 항상 실행 중
         });
     } catch (error) {
         console.error('에이전트 상태 조회 오류:', error);
@@ -623,8 +743,68 @@ app.put('/api/blog/agent-config', authMiddleware, async (req, res) => {
     const { isEnabled, scheduleTime } = req.body;
     
     try {
-        updateSchedulerConfig({ isEnabled, scheduleTime }, sql);
-        res.json({ success: true, status: getSchedulerStatus() });
+        // 데이터베이스에서 기존 설정 가져오기
+        const config = await sql`SELECT * FROM agent_config ORDER BY id DESC LIMIT 1`;
+        
+        if (config.length > 0) {
+            // 업데이트
+            const updateFields = [];
+            const params = [];
+            
+            if (isEnabled !== undefined) {
+                updateFields.push('is_enabled = $1');
+                params.push(isEnabled);
+            }
+            
+            if (scheduleTime !== undefined) {
+                updateFields.push(params.length > 0 ? `schedule_time = $${params.length + 1}` : 'schedule_time = $1');
+                params.push(scheduleTime);
+            }
+            
+            updateFields.push(params.length > 0 ? `updated_at = CURRENT_TIMESTAMP` : 'updated_at = CURRENT_TIMESTAMP');
+            
+            if (isEnabled !== undefined && scheduleTime !== undefined) {
+                await sql`
+                    UPDATE agent_config 
+                    SET is_enabled = ${isEnabled}, 
+                        schedule_time = ${scheduleTime},
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ${config[0].id}
+                `;
+            } else if (isEnabled !== undefined) {
+                await sql`
+                    UPDATE agent_config 
+                    SET is_enabled = ${isEnabled},
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ${config[0].id}
+                `;
+            } else if (scheduleTime !== undefined) {
+                await sql`
+                    UPDATE agent_config 
+                    SET schedule_time = ${scheduleTime},
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ${config[0].id}
+                `;
+            }
+        } else {
+            // 새로 생성
+            await sql`
+                INSERT INTO agent_config (is_enabled, schedule_time)
+                VALUES (${isEnabled ?? true}, ${scheduleTime ?? '09:00'})
+            `;
+        }
+        
+        // 업데이트된 설정 반환
+        const updatedConfig = await sql`SELECT * FROM agent_config ORDER BY id DESC LIMIT 1`;
+        
+        res.json({ 
+            success: true, 
+            status: {
+                isEnabled: updatedConfig[0].is_enabled,
+                scheduleTime: updatedConfig[0].schedule_time,
+                lastRun: updatedConfig[0].last_run
+            }
+        });
     } catch (error) {
         console.error('에이전트 설정 업데이트 오류:', error);
         res.status(500).json({ error: 'Failed to update agent config.' });
