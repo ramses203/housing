@@ -268,7 +268,10 @@
                         </div>
                         <div>
                             <p style="margin: 0.25rem 0; color: #666;">실행 시간</p>
-                            <p id="agent-schedule-time" style="margin: 0.25rem 0; font-weight: bold;"></p>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <p id="agent-schedule-time" style="margin: 0; font-weight: bold;"></p>
+                                <button id="edit-schedule-btn" style="background: none; border: none; cursor: pointer; padding: 0.25rem; color: #666; font-size: 1rem;" title="실행 시간 변경">✏️</button>
+                            </div>
                         </div>
                         <div>
                             <p style="margin: 0.25rem 0; color: #666;">미사용 주제</p>
@@ -277,15 +280,6 @@
                         <div>
                             <p style="margin: 0.25rem 0; color: #666;">마지막 실행</p>
                             <p id="agent-last-run" style="margin: 0.25rem 0; font-weight: bold;"></p>
-                        </div>
-                    </div>
-                    
-                    <!-- 실행 시간 설정 -->
-                    <div style="margin-bottom: 1rem;">
-                        <label for="schedule-time-input" style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #666;">실행 시간 설정 (24시간 형식)</label>
-                        <div style="display: flex; gap: 1rem; align-items: center;">
-                            <input type="time" id="schedule-time-input" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1;" value="09:00">
-                            <button id="update-schedule-btn" style="width: auto; padding: 0.5rem 1rem; background-color: #2196f3;">시간 변경</button>
                         </div>
                     </div>
                     
@@ -795,8 +789,7 @@
         const topicForm = document.getElementById('topic-add-form');
         const generateNowBtn = document.getElementById('generate-now-btn');
         const toggleAgentBtn = document.getElementById('toggle-agent-btn');
-        const updateScheduleBtn = document.getElementById('update-schedule-btn');
-        const scheduleTimeInput = document.getElementById('schedule-time-input');
+        const editScheduleBtn = document.getElementById('edit-schedule-btn');
 
         // 에이전트 상태 로드
         async function loadAgentStatus() {
@@ -812,11 +805,6 @@
                 document.getElementById('agent-last-run').textContent = status.lastRun 
                     ? new Date(status.lastRun).toLocaleString('ko-KR') 
                     : '없음';
-
-                // 시간 입력 필드 업데이트
-                if (status.scheduleTime) {
-                    scheduleTimeInput.value = status.scheduleTime;
-                }
 
                 // 버튼 상태 업데이트
                 toggleAgentBtn.textContent = isEnabled ? '비활성화' : '활성화';
@@ -891,20 +879,21 @@
             }
         });
 
-        // 실행 시간 변경
-        updateScheduleBtn.addEventListener('click', async () => {
-            const newTime = scheduleTimeInput.value;
+        // 실행 시간 변경 (연필 아이콘 클릭)
+        editScheduleBtn.addEventListener('click', async () => {
+            const currentTime = document.getElementById('agent-schedule-time').textContent;
+            const newTime = prompt('실행 시간을 입력하세요 (24시간 형식, 예: 09:00 또는 14:30)', currentTime);
             
-            if (!newTime) {
-                alert('시간을 선택해주세요.');
+            if (!newTime) return; // 취소 버튼 클릭
+            
+            // 시간 형식 검증 (HH:MM)
+            const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+            if (!timePattern.test(newTime)) {
+                alert('올바른 시간 형식이 아닙니다. 예: 09:00 또는 14:30');
                 return;
             }
 
-            if (!confirm(`실행 시간을 ${newTime}로 변경하시겠습니까?`)) return;
-
-            updateScheduleBtn.disabled = true;
-            const originalText = updateScheduleBtn.textContent;
-            updateScheduleBtn.innerHTML = '<span class="spinner"></span>';
+            editScheduleBtn.disabled = true;
 
             try {
                 const res = await fetch('/api/blog/agent-config', {
@@ -923,8 +912,7 @@
                 console.error('시간 변경 오류:', error);
                 alert('오류가 발생했습니다.');
             } finally {
-                updateScheduleBtn.textContent = originalText;
-                updateScheduleBtn.disabled = false;
+                editScheduleBtn.disabled = false;
             }
         });
 
