@@ -882,16 +882,21 @@
         // 실행 시간 변경 (연필 아이콘 클릭)
         editScheduleBtn.addEventListener('click', async () => {
             const currentTime = document.getElementById('agent-schedule-time').textContent;
-            const newTime = prompt('실행 시간을 입력하세요 (24시간 형식, 예: 09:00 또는 14:30)', currentTime);
+            const currentHour = currentTime.split(':')[0];
             
-            if (!newTime) return; // 취소 버튼 클릭
+            const newHour = prompt('실행 시간을 입력하세요 (0-23시, 예: 9 또는 14)\n\n매시간 정각(00분)에 실행됩니다.', currentHour);
             
-            // 시간 형식 검증 (HH:MM)
-            const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
-            if (!timePattern.test(newTime)) {
-                alert('올바른 시간 형식이 아닙니다. 예: 09:00 또는 14:30');
+            if (newHour === null) return; // 취소 버튼 클릭
+            
+            // 시간 형식 검증 (0-23)
+            const hour = parseInt(newHour, 10);
+            if (isNaN(hour) || hour < 0 || hour > 23) {
+                alert('올바른 시간이 아닙니다. 0부터 23 사이의 숫자를 입력하세요.\n예: 9 (오전 9시), 14 (오후 2시)');
                 return;
             }
+
+            // HH:00 형식으로 변환
+            const formattedTime = `${String(hour).padStart(2, '0')}:00`;
 
             editScheduleBtn.disabled = true;
 
@@ -899,12 +904,12 @@
                 const res = await fetch('/api/blog/agent-config', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ scheduleTime: newTime })
+                    body: JSON.stringify({ scheduleTime: formattedTime })
                 });
 
                 if (res.ok) {
                     await loadAgentStatus();
-                    alert(`실행 시간이 ${newTime}로 변경되었습니다.`);
+                    alert(`실행 시간이 매일 ${hour}시 정각으로 변경되었습니다.`);
                 } else {
                     alert('시간 변경에 실패했습니다.');
                 }
