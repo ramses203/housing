@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "app.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/blog-auto-generate",
+      "schedule": "0 0 * * *"
+    }
   ]
 } 
