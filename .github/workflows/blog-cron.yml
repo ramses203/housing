@@ -3,8 +3,14 @@ name: Blog Auto Generate
 on:
   schedule:
     # 매시간 00분에 실행 (UTC 시간)
+    # UTC 0시 = 한국 시간 9시
     - cron: '0 * * * *'
   workflow_dispatch: # 수동 실행 가능
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/blog-cron.yml'
 
 jobs:
   generate-blog:
@@ -12,17 +18,36 @@ jobs:
     steps:
       - name: Call Blog Generate API
         run: |
-          echo "블로그 자동 생성 Cron 실행: $(date)"
+          echo "====================================="
+          echo "블로그 자동 생성 Cron 실행"
+          echo "실행 시각: $(date)"
+          echo "UTC: $(date -u)"
+          echo "====================================="
+          echo ""
+          
           response=$(curl -s -w "\n%{http_code}" -X GET "https://dawn-housing.vercel.app/api/cron/blog-auto-generate")
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           
-          echo "HTTP Status: $http_code"
-          echo "Response: $body"
+          echo "📊 API 응답:"
+          echo "  HTTP Status: $http_code"
+          echo "  Response Body:"
+          echo "$body" | jq '.' 2>/dev/null || echo "$body"
+          echo ""
           
           if [ "$http_code" -eq 200 ]; then
             echo "✅ 블로그 생성 API 호출 성공"
+            
+            # 응답에서 success 필드 확인
+            success=$(echo "$body" | jq -r '.success' 2>/dev/null)
+            if [ "$success" = "true" ]; then
+              echo "🎉 블로그 포스트 생성 완료!"
+              echo "  제목: $(echo "$body" | jq -r '.result.title' 2>/dev/null)"
+            else
+              echo "⏰ $(echo "$body" | jq -r '.message' 2>/dev/null)"
+            fi
           else
-            echo "⚠️ 블로그 생성 API 호출 완료 (상태: $http_code)"
+            echo "⚠️ API 호출 완료 (HTTP $http_code)"
+            exit 1
           fi
 
