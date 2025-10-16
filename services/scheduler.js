@@ -72,17 +72,15 @@ async function runBlogGeneration(sql) {
         console.log('[자동 블로그 생성] 시작:', new Date().toLocaleString('ko-KR'));
 
         // 미사용 주제 가져오기
-        let topic = await getNextUnusedTopic(sql);
+        const topic = await getNextUnusedTopic(sql);
 
-        // 주제가 없으면 모든 주제 리셋
+        // 주제가 없으면 중단
         if (!topic) {
-            console.log('사용 가능한 주제가 없습니다. 모든 주제를 리셋합니다.');
-            await resetAllTopics(sql);
-            topic = await getNextUnusedTopic(sql);
-
-            if (!topic) {
-                throw new Error('주제 리스트가 비어있습니다. 주제를 추가해주세요.');
-            }
+            console.log('⚠️ 사용 가능한 주제가 없습니다. 블로그 생성을 건너뜁니다.');
+            return {
+                success: false,
+                message: '사용 가능한 주제가 없습니다. 새로운 주제를 추가해주세요.'
+            };
         }
 
         // 블로그 포스트 생성
