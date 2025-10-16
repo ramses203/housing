@@ -33,6 +33,43 @@ function getClientIp(req) {
            'unknown';
 }
 
+// 블로그 콘텐츠 파싱 헬퍼 함수 (JSON 문자열이나 이스케이프된 문자열을 HTML로 변환)
+function parseContentForDisplay(content) {
+    if (!content) return '';
+    
+    let processed = content;
+    
+    // JSON 형식으로 저장된 경우 파싱 시도 (예: {"title":"...", "content":"..."} 형태)
+    try {
+        const parsed = JSON.parse(content);
+        if (parsed.content) {
+            processed = parsed.content;
+        }
+    } catch (e) {
+        // JSON이 아니면 일반 텍스트/HTML로 처리
+    }
+    
+    // 이스케이프된 줄바꿈(\n) 제거 - HTML에서는 불필요
+    processed = processed.replace(/\\n/g, '');
+    
+    // 이미 올바른 HTML 형식이면 그대로 반환
+    if (processed.trim().startsWith('<') && processed.includes('</')) {
+        // 연속된 공백만 정리
+        processed = processed.replace(/\s+/g, ' ');
+        return processed.trim();
+    }
+    
+    // HTML이 아닌 경우 기본 변환
+    processed = processed.replace(/\n\n+/g, '</p><p>');
+    processed = processed.replace(/\n/g, '<br>');
+    
+    if (!processed.includes('<p>')) {
+        processed = `<p>${processed}</p>`;
+    }
+    
+    return processed;
+}
+
 // 데이터베이스 테이블 초기화 및 마이그레이션
 async function initDatabase() {
   try {
@@ -317,7 +354,16 @@ app.get('/api/products', async (req, res) => {
 app.get('/api/blog/posts', async (req, res) => {
     try {
         const rows = await sql`SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC`;
-        res.json(rows);
+        
+        // 각 포스트의 content 파싱 (목록에서는 요약만 필요할 수 있으므로 선택적)
+        const processedRows = rows.map(post => ({
+            ...post,
+            // 목록에서는 전체 content를 파싱하지 않고 미리보기만 제공
+            // 필요시 content를 파싱하려면 주석 해제
+            // content: parseContentForDisplay(post.content)
+        }));
+        
+        res.json(processedRows);
     } catch (error) {
         console.error('블로그 포스트 조회 오류:', error);
         res.json([]);
@@ -335,6 +381,11 @@ app.get('/api/blog/posts/:id', async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ error: '포스트를 찾을 수 없습니다.' });
         }
+        
+        const post = rows[0];
+        
+        // content 파싱 (JSON 형식이거나 이스케이프된 경우 처리)
+        post.content = parseContentForDisplay(post.content);
         
         // IP 기반 조회 기록 확인 및 추가 (중복 방지)
         try {
@@ -354,17 +405,19 @@ app.get('/api/blog/posts/:id', async (req, res) => {
                     WHERE id = ${id}
                 `;
                 
-                // 업데이트된 조회수를 다시 조회
+                // 업데이트된 조회수를 다시 조회하고 content 파싱
                 const updatedRows = await sql`SELECT * FROM blog_posts WHERE id = ${id} AND published = 1`;
-                res.json(updatedRows[0]);
+                const updatedPost = updatedRows[0];
+                updatedPost.content = parseContentForDisplay(updatedPost.content);
+                res.json(updatedPost);
             } else {
                 // 이미 조회한 IP인 경우 기존 데이터 반환
-                res.json(rows[0]);
+                res.json(post);
             }
         } catch (viewError) {
             console.error('조회 기록 저장 오류:', viewError);
             // 조회 기록 저장 실패해도 포스트는 반환
-            res.json(rows[0]);
+            res.json(post);
         }
     } catch (error) {
         console.error('블로그 포스트 조회 오류:', error);

@@ -28,6 +28,10 @@ function sanitizeHtmlContent(content) {
     
     let cleaned = content;
     
+    // 먼저 이스케이프된 줄바꿈(\n)을 실제 HTML 줄바꿈으로 제거
+    // JSON에서 \n은 실제 줄바꿈이 아니라 문자열이므로 제거 필요
+    cleaned = cleaned.replace(/\\n/g, '');
+    
     // style 속성 제거
     cleaned = cleaned.replace(/\s*style\s*=\s*["'][^"']*["']/gi, '');
     
@@ -45,7 +49,7 @@ function sanitizeHtmlContent(content) {
     cleaned = cleaned.replace(/<span[^>]*>/gi, '');
     cleaned = cleaned.replace(/<\/span>/gi, '');
     
-    // 연속된 공백 정리
+    // 연속된 공백 정리 (탭, 개행 등을 단일 공백으로)
     cleaned = cleaned.replace(/\s+/g, ' ');
     
     // 빈 태그 제거
@@ -53,8 +57,16 @@ function sanitizeHtmlContent(content) {
     cleaned = cleaned.replace(/<strong>\s*<\/strong>/gi, '');
     cleaned = cleaned.replace(/<em>\s*<\/em>/gi, '');
     
-    // 연속된 줄바꿈 정리
-    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n');
+    // 태그 사이의 불필요한 공백 정리
+    cleaned = cleaned.replace(/>\s+</g, '><');
+    
+    // 줄바꿈 정리 (보기 좋게 정리)
+    cleaned = cleaned.replace(/<\/p><p>/g, '</p>\n<p>');
+    cleaned = cleaned.replace(/<\/h2><p>/g, '</h2>\n<p>');
+    cleaned = cleaned.replace(/<\/h3><p>/g, '</h3>\n<p>');
+    cleaned = cleaned.replace(/<\/ul><p>/g, '</ul>\n<p>');
+    cleaned = cleaned.replace(/<\/p><h2>/g, '</p>\n<h2>');
+    cleaned = cleaned.replace(/<\/p><h3>/g, '</p>\n<h3>');
     
     return cleaned.trim();
 }
