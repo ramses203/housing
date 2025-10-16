@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+// Vercel 자동 배포 테스트
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
