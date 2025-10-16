@@ -662,14 +662,14 @@ app.get('/api/cron/blog-auto-generate', async (req, res) => {
             return res.json({ success: false, message: '에이전트 비활성화 상태' });
         }
         
-        // 설정된 시간과 분 비교 (±5분 허용)
+        // 설정된 시간과 분 비교 (±10분 허용)
         const [scheduleHour, scheduleMinute] = schedule_time.split(':').map(v => parseInt(v));
         const scheduleTotalMinutes = scheduleHour * 60 + scheduleMinute;
         const currentTotalMinutes = currentHour * 60 + currentMinute;
         const minuteDiff = Math.abs(currentTotalMinutes - scheduleTotalMinutes);
         
-        // 설정된 시간의 ±5분 이내가 아니면 실행하지 않음
-        if (minuteDiff > 5) {
+        // 설정된 시간의 ±10분 이내가 아니면 실행하지 않음
+        if (minuteDiff > 10) {
             console.log(`[Vercel Cron] 실행 시간이 아닙니다. (현재: ${currentTime}, 설정: ${schedule_time}, 차이: ${minuteDiff}분)`);
             return res.json({ success: false, message: '실행 시간 아님', currentTime, scheduleTime: schedule_time, minuteDiff });
         }

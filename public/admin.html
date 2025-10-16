@@ -883,7 +883,7 @@
         editScheduleBtn.addEventListener('click', async () => {
             const currentTime = document.getElementById('agent-schedule-time').textContent;
             
-            const newTime = prompt('실행 시간을 입력하세요 (HH:MM 형식, 예: 09:30, 14:15)\n\ncron-job.org가 5분마다 체크하므로 설정 시간 ±5분 이내에 실행됩니다.', currentTime);
+            const newTime = prompt('실행 시간을 입력하세요 (HH:MM 형식, 예: 09:30, 14:15)\n\ncron-job.org가 5분마다 체크하므로 설정 시간 ±10분 이내에 실행됩니다.', currentTime);
             
             if (newTime === null) return; // 취소 버튼 클릭
             
