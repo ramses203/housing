@@ -482,7 +482,7 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
     try {
         console.log('블로그 포스트 삭제 시작:', id);
         
-        // 먼저 포스트 데이터를 가져옴 (이미지 URL 추출용)
+        // 먼저 포스트 데이터를 가져옴 (이미지 URL 추출용 및 주제 ID 확인용)
         const posts = await sql`SELECT * FROM blog_posts WHERE id = ${id}`;
         
         if (posts.length === 0) {
@@ -495,7 +495,8 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
             id: post.id, 
             title: post.title, 
             thumbnail: post.thumbnail,
-            contentLength: post.content ? post.content.length : 0 
+            contentLength: post.content ? post.content.length : 0,
+            topicId: post.topic_id
         });
         
         const imagePublicIds = [];
@@ -559,11 +560,26 @@ app.delete('/api/blog/posts/:id', authMiddleware, async (req, res) => {
             console.log('삭제할 이미지가 없음');
         }
         
+        // 사용했던 주제를 미사용 상태로 변경
+        if (post.topic_id) {
+            try {
+                await sql`
+                    UPDATE blog_topics 
+                    SET used = FALSE, used_at = NULL 
+                    WHERE id = ${post.topic_id}
+                `;
+                console.log(`✅ 주제 ID ${post.topic_id}를 미사용으로 변경 완료`);
+            } catch (topicError) {
+                console.error('⚠️ 주제 상태 변경 실패:', topicError);
+                // 주제 변경 실패해도 포스트 삭제는 계속 진행
+            }
+        }
+        
         // 데이터베이스에서 포스트 삭제
         await sql`DELETE FROM blog_posts WHERE id = ${id}`;
         
         console.log('✅ 블로그 포스트 삭제 완료:', id, `(이미지 ${imagePublicIds.length}개 삭제 시도)`);
-        res.json({ success: true, deletedImages: imagePublicIds.length });
+        res.json({ success: true, deletedImages: imagePublicIds.length, topicReset: !!post.topic_id });
     } catch (error) {
         console.error('블로그 포스트 삭제 오류:', error);
         res.status(500).json({ error: 'Failed to delete post.' });
@@ -804,30 +820,31 @@ app.put('/api/blog/agent-config', authMiddleware, async (req, res) => {
         const config = await sql`SELECT * FROM agent_config ORDER BY id DESC LIMIT 1`;
         
         if (config.length > 0) {
-            // 업데이트
-            const updateFields = [];
-            const params = [];
+            // scheduleTime이 변경되었는지 확인
+            const isScheduleTimeChanged = scheduleTime !== undefined && scheduleTime !== config[0].schedule_time;
             
-            if (isEnabled !== undefined) {
-                updateFields.push('is_enabled = $1');
-                params.push(isEnabled);
-            }
-            
-            if (scheduleTime !== undefined) {
-                updateFields.push(params.length > 0 ? `schedule_time = $${params.length + 1}` : 'schedule_time = $1');
-                params.push(scheduleTime);
-            }
-            
-            updateFields.push(params.length > 0 ? `updated_at = CURRENT_TIMESTAMP` : 'updated_at = CURRENT_TIMESTAMP');
-            
+            // 업데이트 수행
             if (isEnabled !== undefined && scheduleTime !== undefined) {
-                await sql`
-                    UPDATE agent_config 
-                    SET is_enabled = ${isEnabled}, 
-                        schedule_time = ${scheduleTime},
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ${config[0].id}
-                `;
+                // 시간 변경 시 last_run 초기화
+                if (isScheduleTimeChanged) {
+                    await sql`
+                        UPDATE agent_config 
+                        SET is_enabled = ${isEnabled}, 
+                            schedule_time = ${scheduleTime},
+                            last_run = NULL,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ${config[0].id}
+                    `;
+                    console.log(`✅ 스케줄 시간 변경됨 (${config[0].schedule_time} → ${scheduleTime}), last_run 초기화`);
+                } else {
+                    await sql`
+                        UPDATE agent_config 
+                        SET is_enabled = ${isEnabled}, 
+                            schedule_time = ${scheduleTime},
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ${config[0].id}
+                    `;
+                }
             } else if (isEnabled !== undefined) {
                 await sql`
                     UPDATE agent_config 
@@ -836,12 +853,24 @@ app.put('/api/blog/agent-config', authMiddleware, async (req, res) => {
                     WHERE id = ${config[0].id}
                 `;
             } else if (scheduleTime !== undefined) {
-                await sql`
-                    UPDATE agent_config 
-                    SET schedule_time = ${scheduleTime},
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ${config[0].id}
-                `;
+                // 시간만 변경되는 경우 last_run 초기화
+                if (isScheduleTimeChanged) {
+                    await sql`
+                        UPDATE agent_config 
+                        SET schedule_time = ${scheduleTime},
+                            last_run = NULL,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ${config[0].id}
+                    `;
+                    console.log(`✅ 스케줄 시간 변경됨 (${config[0].schedule_time} → ${scheduleTime}), last_run 초기화`);
+                } else {
+                    await sql`
+                        UPDATE agent_config 
+                        SET schedule_time = ${scheduleTime},
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ${config[0].id}
+                    `;
+                }
             }
         } else {
             // 새로 생성
