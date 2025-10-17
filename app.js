@@ -746,11 +746,22 @@ app.get('/api/cron/blog-auto-generate', async (req, res) => {
         // 오늘 이미 실행했는지 확인
         if (last_run) {
             const lastRunDate = new Date(last_run);
-            const lastRunKorea = new Date(lastRunDate.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
-            const today = koreaTime.toDateString();
-            const lastRunDay = lastRunKorea.toDateString();
             
-            if (today === lastRunDay) {
+            // UTC 시간을 한국 시간으로 변환 (더 정확한 방법)
+            const lastRunKoreaTime = new Date(lastRunDate.getTime() + (9 * 60 * 60 * 1000)); // UTC + 9시간
+            const todayKorea = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+            
+            // 날짜만 비교 (YYYY-MM-DD 형식)
+            const todayStr = todayKorea.toISOString().split('T')[0];
+            const lastRunStr = lastRunKoreaTime.toISOString().split('T')[0];
+            
+            console.log('[Vercel Cron] 날짜 비교:', { 
+                today: todayStr, 
+                lastRun: lastRunStr,
+                lastRunOriginal: last_run 
+            });
+            
+            if (todayStr === lastRunStr) {
                 console.log('[Vercel Cron] 오늘 이미 실행했습니다:', lastRunDate);
                 return res.json({ success: false, message: '오늘 이미 실행됨', lastRun: last_run });
             }
